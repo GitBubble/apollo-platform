@@ -179,19 +179,23 @@ void TransportTCP::setKeepAlive(bool use, uint32_t idle, uint32_t interval, uint
     }
 
 /* cygwin SOL_TCP does not seem to support TCP_KEEPIDLE, TCP_KEEPINTVL, TCP_KEEPCNT */
-#if defined(SOL_TCP) && !defined(__CYGWIN__)
+#if defined(SOL_TCP) && defined(TCP_KEEPIDLE)
     val = idle;
     if (setsockopt(sock_, SOL_TCP, TCP_KEEPIDLE, &val, sizeof(val)) != 0)
     {
       ROS_DEBUG("setsockopt failed to set TCP_KEEPIDLE on socket [%d] [%s]", sock_, cached_remote_host_.c_str());
     }
+#endif
 
+#if defined(SOL_TCP) && defined(TCP_KEEPINTVL)
     val = interval;
     if (setsockopt(sock_, SOL_TCP, TCP_KEEPINTVL, &val, sizeof(val)) != 0)
     {
       ROS_DEBUG("setsockopt failed to set TCP_KEEPINTVL on socket [%d] [%s]", sock_, cached_remote_host_.c_str());
     }
+#endif
 
+#if defined(SOL_TCP) && defined(TCP_KEEPCNT)
     val = count;
     if (setsockopt(sock_, SOL_TCP, TCP_KEEPCNT, &val, sizeof(val)) != 0)
     {
@@ -311,11 +315,12 @@ bool TransportTCP::connect(const std::string& host, int port)
 
   int ret = ::connect(sock_, (sockaddr*) &sas, sas_len);
   // windows might need some time to sleep (input from service robotics hack) add this if testing proves it is necessary.
-  ROS_ASSERT((flags_ & SYNCHRONOUS) || ret != 0);
+  // ROS_ASSERT((flags_ & SYNCHRONOUS) || ret != 0);
   if (((flags_ & SYNCHRONOUS) && ret != 0) || // synchronous, connect() should return 0
-      (!(flags_ & SYNCHRONOUS) && last_socket_error() != ROS_SOCKETS_ASYNCHRONOUS_CONNECT_RETURN)) // asynchronous, connect() should return -1 and WSAGetLastError()=WSAEWOULDBLOCK/errno=EINPROGRESS
+      (!(flags_ & SYNCHRONOUS) && ret != 0 && last_socket_error() != ROS_SOCKETS_ASYNCHRONOUS_CONNECT_RETURN)) 
+      // asynchronous, connect() may return 0 or -1. When return -1, WSAGetLastError()=WSAEWOULDBLOCK/errno=EINPROGRESS
   {
-    ROSCPP_LOG_DEBUG("Connect to tcpros publisher [%s:%d] failed with error [%d, %s]", host.c_str(), port, ret, last_socket_error_string());
+    ROSCPP_CONN_LOG_DEBUG("Connect to tcpros publisher [%s:%d] failed with error [%d, %s]", host.c_str(), port, ret, last_socket_error_string());
     close();
 
     return false;
@@ -340,11 +345,11 @@ bool TransportTCP::connect(const std::string& host, int port)
 
   if (flags_ & SYNCHRONOUS)
   {
-    ROSCPP_LOG_DEBUG("connect() succeeded to [%s:%d] on socket [%d]", host.c_str(), port, sock_);
+    ROSCPP_CONN_LOG_DEBUG("connect() succeeded to [%s:%d] on socket [%d]", host.c_str(), port, sock_);
   }
   else
   {
-    ROSCPP_LOG_DEBUG("Async connect() in progress to [%s:%d] on socket [%d]", host.c_str(), port, sock_);
+    ROSCPP_CONN_LOG_DEBUG("Async connect() in progress to [%s:%d] on socket [%d]", host.c_str(), port, sock_);
   }
 
   return true;
@@ -727,40 +732,6 @@ std::string TransportTCP::getClientURI()
   int port;
 
   switch (sas.ss_family)
-  {
-    case AF_INET:
-      port = ntohs(sin->sin_port);
-      strcpy(namebuf, inet_ntoa(sin->sin_addr));
-      break;
-    case AF_INET6:
-      port = ntohs(sin6->sin6_port);
-      inet_ntop(AF_INET6, (void*)&(sin6->sin6_addr), namebuf, sizeof(namebuf));
-      break;
-    default:
-      namebuf[0] = 0;
-      port = 0;
-      break;
-  }
-
-  std::string ip = namebuf;
-  std::stringstream uri;
-  uri << ip << ":" << port;
-
-  return uri.str();
-}
-
-std::string TransportTCP::getLocalIp()
-{
-  socklen_t local_address_len = sizeof(local_address_);
-  getsockname(sock_, (sockaddr *)&local_address_, &local_address_len);
-  
-  sockaddr_in *sin = (sockaddr_in *)&local_address_;
-  sockaddr_in6 *sin6 = (sockaddr_in6 *)&local_address_;
-
-  char namebuf[128];
-  int port = 0;
-
-  switch (local_address_.ss_family)
   {
     case AF_INET:
       port = ntohs(sin->sin_port);

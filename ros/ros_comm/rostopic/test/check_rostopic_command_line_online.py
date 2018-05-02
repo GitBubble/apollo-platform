@@ -91,6 +91,10 @@ class TestRostopicOnline(unittest.TestCase):
             output = Popen([cmd, 'type', name], stdout=PIPE).communicate()[0]
             output = output.decode()
             self.assertEquals('std_msgs/String', output.strip())
+            # check type of topic field
+            output = Popen([cmd, 'type', name + '/data'], stdout=PIPE).communicate()[0]
+            output = output.decode()
+            self.assertEquals('std_msgs/String data string', output.strip())
 
             # find
             output = Popen([cmd, 'find', 'std_msgs/String'], stdout=PIPE).communicate()[0]
@@ -107,7 +111,7 @@ class TestRostopicOnline(unittest.TestCase):
             values = [n for n in values if n != '---']
             self.assertEquals(count, len(values), "wrong number of echos in output:\n"+str(values))
             for n in values:
-                self.assert_('data: hello world ' in n, n)
+                self.assert_('data: "hello world ' in n, n)
 
             if 0:
                 #bw

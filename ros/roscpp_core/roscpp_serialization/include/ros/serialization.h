@@ -36,7 +36,6 @@
 #include "serialized_message.h"
 #include "ros/message_traits.h"
 #include "ros/builtin_message_traits.h"
-#include "ros/protobuffer_traits.h"
 #include "ros/exception.h"
 #include "ros/datatypes.h"
 
@@ -116,7 +115,7 @@ ROSCPP_SERIALIZATION_DECL void throwStreamOverrun();
  * Specializing the Serializer class is the only thing you need to do to get the ROS serialization system
  * to work with a type.
  */
-template<typename T, typename Enable = void>
+template<typename T>
 struct Serializer
 {
   /**
@@ -205,34 +204,34 @@ inline uint32_t serializationLength(const T& t)
       memcpy(&v, stream.advance(sizeof(v)), sizeof(v) ); \
     } \
     \
-    inline static uint32_t serializedLength(const Type t) \
+    inline static uint32_t serializedLength(const Type&) \
       { \
       return sizeof(Type); \
     } \
 };
 
 #if defined(__arm__) || defined(__arm)
-    ROS_CREATE_SIMPLE_SERIALIZER_ARM(uint8_t);
-    ROS_CREATE_SIMPLE_SERIALIZER_ARM(int8_t);
-    ROS_CREATE_SIMPLE_SERIALIZER_ARM(uint16_t);
-    ROS_CREATE_SIMPLE_SERIALIZER_ARM(int16_t);
-    ROS_CREATE_SIMPLE_SERIALIZER_ARM(uint32_t);
-    ROS_CREATE_SIMPLE_SERIALIZER_ARM(int32_t);
-    ROS_CREATE_SIMPLE_SERIALIZER_ARM(uint64_t);
-    ROS_CREATE_SIMPLE_SERIALIZER_ARM(int64_t);
-    ROS_CREATE_SIMPLE_SERIALIZER_ARM(float);
-    ROS_CREATE_SIMPLE_SERIALIZER_ARM(double);
+    ROS_CREATE_SIMPLE_SERIALIZER_ARM(uint8_t)
+    ROS_CREATE_SIMPLE_SERIALIZER_ARM(int8_t)
+    ROS_CREATE_SIMPLE_SERIALIZER_ARM(uint16_t)
+    ROS_CREATE_SIMPLE_SERIALIZER_ARM(int16_t)
+    ROS_CREATE_SIMPLE_SERIALIZER_ARM(uint32_t)
+    ROS_CREATE_SIMPLE_SERIALIZER_ARM(int32_t)
+    ROS_CREATE_SIMPLE_SERIALIZER_ARM(uint64_t)
+    ROS_CREATE_SIMPLE_SERIALIZER_ARM(int64_t)
+    ROS_CREATE_SIMPLE_SERIALIZER_ARM(float)
+    ROS_CREATE_SIMPLE_SERIALIZER_ARM(double)
 #else
-    ROS_CREATE_SIMPLE_SERIALIZER(uint8_t);
-    ROS_CREATE_SIMPLE_SERIALIZER(int8_t);
-    ROS_CREATE_SIMPLE_SERIALIZER(uint16_t);
-    ROS_CREATE_SIMPLE_SERIALIZER(int16_t);
-    ROS_CREATE_SIMPLE_SERIALIZER(uint32_t);
-    ROS_CREATE_SIMPLE_SERIALIZER(int32_t);
-    ROS_CREATE_SIMPLE_SERIALIZER(uint64_t);
-    ROS_CREATE_SIMPLE_SERIALIZER(int64_t);
-    ROS_CREATE_SIMPLE_SERIALIZER(float);
-    ROS_CREATE_SIMPLE_SERIALIZER(double);
+    ROS_CREATE_SIMPLE_SERIALIZER(uint8_t)
+    ROS_CREATE_SIMPLE_SERIALIZER(int8_t)
+    ROS_CREATE_SIMPLE_SERIALIZER(uint16_t)
+    ROS_CREATE_SIMPLE_SERIALIZER(int16_t)
+    ROS_CREATE_SIMPLE_SERIALIZER(uint32_t)
+    ROS_CREATE_SIMPLE_SERIALIZER(int32_t)
+    ROS_CREATE_SIMPLE_SERIALIZER(uint64_t)
+    ROS_CREATE_SIMPLE_SERIALIZER(int64_t)
+    ROS_CREATE_SIMPLE_SERIALIZER(float)
+    ROS_CREATE_SIMPLE_SERIALIZER(double)
 #endif
 
 /**

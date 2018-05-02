@@ -2,14 +2,12 @@ cmake_minimum_required(VERSION 2.8.3)
 project(roscpp)
 
 if(NOT WIN32)
-  set_directory_properties(PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra")
+  set_directory_properties(PROPERTIES COMPILE_OPTIONS "-std=c++11;-Wall;-Wextra")
 endif()
 
 find_package(catkin REQUIRED COMPONENTS
   cpp_common message_generation rosconsole roscpp_serialization roscpp_traits rosgraph_msgs rostime std_msgs xmlrpcpp
 )
-
-set(CMAKE_CXX_FLAGS "-g -std=c++11 ${CMAKE_CXX_FLAGS}")
 
 catkin_package_xml()
 # split version in parts and pass to extra file
@@ -24,18 +22,18 @@ list(GET roscpp_VERSION_LIST 2 roscpp_VERSION_PATCH)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/ros/common.h.in ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_INCLUDE_DESTINATION}/ros/common.h)
 
-find_package(Boost REQUIRED COMPONENTS signals filesystem system)
+find_package(Boost REQUIRED COMPONENTS chrono filesystem signals system)
 
 include_directories(include ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_INCLUDE_DESTINATION}/ros ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 add_message_files(
   DIRECTORY msg
-  FILES Logger.msg SharedMemoryHeader.msg  
+  FILES Logger.msg
 )
 
 add_service_files(
   DIRECTORY srv
-  FILES Empty.srv GetLoggers.srv SetLoggerLevel.srv SharedMemoryRegisterSegment.srv
+  FILES Empty.srv GetLoggers.srv SetLoggerLevel.srv
 )
 
 generate_messages()
@@ -62,38 +60,18 @@ catkin_package(
 
 include(CheckIncludeFiles)
 include(CheckFunctionExists)
+include(CheckCXXSymbolExists)
 
 # Not everybody has <ifaddrs.h> (e.g., embedded arm-linux)
 CHECK_INCLUDE_FILES(ifaddrs.h HAVE_IFADDRS_H)
 # Not everybody has trunc (e.g., Windows, embedded arm-linux)
 CHECK_FUNCTION_EXISTS(trunc HAVE_TRUNC)
+# Not everybody has epoll (e.g., Windows, BSD, embedded arm-linux) 
+CHECK_CXX_SYMBOL_EXISTS(epoll_wait "sys/epoll.h" HAVE_EPOLL)
 
 # Output test results to config.h
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/libros/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
-set(FASTRTPS_INCLUDE_DIR "${FASTRTPS_PATH}/include")
-set(FASTRTPS_LIBRARY_DIR "${FASTRTPS_PATH}/lib")
-set(FASTRTPS_GEN "${FASTRTPS_PATH}/bin/fastrtpsgen")
-include_directories(include ${FASTRTPS_INCLUDE_DIR})
-
-link_directories(
-${FASTRTPS_LIBRARY_DIR}
-)
-
-SET(DISCOVERY_IDL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/src/libros/discovery/MetaMessagePubSubTypes.cxx ${CMAKE_CURRENT_SOURCE_DIR}/src/libros/discovery/MetaMessage.cxx)
-#ADD_CUSTOM_COMMAND(
-#    OUTPUT ${DISCOVERY_IDL_SRCS}
-#    COMMAND ${FASTRTPS_GEN} ${CMAKE_CURRENT_SOURCE_DIR}/src/libros/discovery/MetaMessage.idl -d ${CMAKE_CURRENT_SOURCE_DIR}/src/libros/discovery/}
-#    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/libros/discovery/MetaMessage.idl
-#)
-
-# Add discovery for python tools
-add_library(discovery SHARED
-  src/libros/discovery/participant.cpp
-  ${DISCOVERY_IDL_SRCS}
-)
-target_link_libraries(discovery fastcdr fastrtps -fPIC)
 
 add_library(roscpp 
   src/libros/master.cpp
@@ -143,49 +121,21 @@ add_library(roscpp
   src/libros/poll_set.cpp
   src/libros/service.cpp
   src/libros/this_node.cpp
-  src/libros/shm_manager.cpp
-  src/libros/sharedmem_transport/sharedmem_block.cpp
-  src/libros/sharedmem_transport/sharedmem_publisher_impl.cpp
-  src/libros/sharedmem_transport/sharedmem_segment.cpp
-  src/libros/sharedmem_transport/sharedmem_util.cpp
-  src/libros/broadcast_manager.cpp
-  src/libros/discovery/participant.cpp
-  ${DISCOVERY_IDL_SRCS}
+  src/libros/steady_timer.cpp
   )
 
 add_dependencies(roscpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(roscpp roscpp_gencpp rosgraph_msgs_gencpp metric_msgs_gencpp std_msgs_gencpp)
-#add_definitions(-std=c++0x -g)
 
 target_link_libraries(roscpp
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
-  fastrtps
-  fastcdr
-  yaml-cpp
-  -lrt
   )
-
-add_library(shm_manager SHARED
-  src/libros/sharedmem_transport/sharedmem_util.cpp
-  src/libros/sharedmem_transport/sharedmem_block.cpp
-  src/libros/sharedmem_transport/sharedmem_segment.cpp
-)
-
-add_dependencies(shm_manager roscpp)
-target_link_libraries(shm_manager ${catkin_LIBRARIES} ${Boost_LIBRARIES} roscpp -fPIC)
 
 #explicitly install library and includes
 install(TARGETS roscpp
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
-
-install(TARGETS shm_manager
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
-
 install(DIRECTORY include/
   DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h")
@@ -199,44 +149,3 @@ catkin_install_python(PROGRAMS
   rosbuild/scripts/gensrv_cpp.py
   rosbuild/scripts/msg_gen.py
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/rosbuild/scripts)
-
-install(FILES lib/_participant.so
-  DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
-install(TARGETS discovery
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
-
-message("${CATKIN_GLOBAL_ETC_DESTINATION}")
-install(FILES transport_mode.yaml
-  DESTINATION ${CATKIN_GLOBAL_ETC_DESTINATION}/ros)
-  
-#node test
-add_executable(talker test_node/talker.cpp)
-add_executable(listener test_node/listener.cpp)
-
-target_link_libraries(talker ${catkin_LIBRARIES} ${PROJECT_NAME})
-target_link_libraries(listener ${catkin_LIBRARIES} ${PROJECT_NAME})
-
-install(TARGETS talker
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
-install(TARGETS listener
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
-
-#unit test
-catkin_add_gtest(test_shm
-  test/test_shm.cpp
-  src/libros/sharedmem_transport/sharedmem_block.cpp
-  src/libros/sharedmem_transport/sharedmem_publisher_impl.cpp
-  src/libros/sharedmem_transport/sharedmem_segment.cpp
-  src/libros/sharedmem_transport/sharedmem_util.cpp)
-  
-target_link_libraries(test_shm 
-  ${catkin_LIBRARIES}
-  ${Boost_LIBRARIES} 
-  roscpp
-  gtest)

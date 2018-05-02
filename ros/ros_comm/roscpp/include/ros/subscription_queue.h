@@ -38,17 +38,6 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <deque>
 
-#include <thread>
-#include <iostream>
-#include <stdio.h>
-#include <string.h>
-
-#include <boost/interprocess/sync/interprocess_mutex.hpp>
-#include <boost/interprocess/sync/scoped_lock.hpp>
-#include <boost/interprocess/ipc/message_queue.hpp>
-#include "ros/subscription_callback_helper.h"
-#include "sharedmem_transport/sharedmem_util.h"
-
 namespace ros
 {
 
@@ -63,7 +52,6 @@ class ROSCPP_DECL SubscriptionQueue : public CallbackInterface, public boost::en
 private:
   struct Item
   {
-    bool default_transport;    
     SubscriptionCallbackHelperPtr helper;
     MessageDeserializerPtr deserializer;
 
@@ -79,20 +67,17 @@ public:
   SubscriptionQueue(const std::string& topic, int32_t queue_size, bool allow_concurrent_callbacks);
   ~SubscriptionQueue();
 
-  void push(bool default_transport, const SubscriptionCallbackHelperPtr& helper, const MessageDeserializerPtr& deserializer,
-	  bool has_tracked_object, const VoidConstWPtr& tracked_object, bool nonconst_need_copy,
-	  ros::Time receipt_time = ros::Time(), bool* was_full = 0);
+  void push(const SubscriptionCallbackHelperPtr& helper, const MessageDeserializerPtr& deserializer, 
+	    bool has_tracked_object, const VoidConstWPtr& tracked_object, bool nonconst_need_copy, 
+	    ros::Time receipt_time = ros::Time(), bool* was_full = 0);
   void clear();
 
   virtual CallbackInterface::CallResult call();
   virtual bool ready();
   bool full();
 
-  void removeMessageQueue(std::string topic);
-  
 private:
   bool fullNoLock();
-
   std::string topic_;
   int32_t size_;
   bool full_;
@@ -103,15 +88,6 @@ private:
   bool allow_concurrent_callbacks_;
 
   boost::recursive_mutex callback_mutex_;
-
-  std::thread internal_cb_;
-  bool first_run_;
-  bool internal_cb_runnning_;
-  int32_t last_read_index_;
-  boost::interprocess::managed_shared_memory* segment_;
-  sharedmem_transport::SharedMemorySegment* segment_mgr_;
-  sharedmem_transport::SharedMemoryBlock* descriptors_sub_;
-  uint32_t segment_queue_size_;
 };
 
 }

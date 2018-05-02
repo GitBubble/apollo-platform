@@ -2,16 +2,25 @@
 Changelog for package rospack
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-2.2.8 (2017-03-06)
+2.4.4 (2017-11-16)
+------------------
+* workaround console_bridge macros (`#85 <https://github.com/ros/rospack/issues/85>`_)
+
+2.3.3 (2017-03-06)
 ------------------
 * make some deps* functions public (`#65 <https://github.com/ros/rospack/pull/65>`_)
 
-2.2.7 (2016-06-27)
+2.3.2 (2017-02-14)
+------------------
+* add license field in Stackage class (`#66 <https://github.com/ros/rospack/issues/66>`_)
+
+2.3.1 (2016-09-02)
+------------------
+* fix FTBFS on hurd-i386 (`#64 <https://github.com/ros/rospack/issues/64>`_)
+
+2.3.0 (2016-03-09)
 ------------------
 * allow caching of rospack results (`#49 <https://github.com/ros/rospack/issues/49>`_)
-
-2.2.6 (2016-03-09)
-------------------
 * fix memory leak in Rosstackage::addStackage (`#59 <https://github.com/ros/rospack/issues/59>`_)
 * return false in depsOnDetail if the package name in rospack plugins can not be found (`#51 <https://github.com/ros/rospack/issues/51>`_)
 * #undef symbols before #defining them to avoid preprocessor warnings in the case that they were already #defined (`#50 <https://github.com/ros/rospack/issues/50>`_)

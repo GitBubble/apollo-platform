@@ -2,34 +2,71 @@
 Changelog for package roslib
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.11.14 (2017-03-06)
---------------------
+1.14.3 (2018-01-30)
+-------------------
+* replace env hooks with a dependency on ros_environment (`#166 <https://github.com/ros/ros/issues/166>`_)
+
+1.14.2 (2017-10-26)
+-------------------
+
+1.14.1 (2017-07-27)
+-------------------
+
+1.14.0 (2017-02-22)
+-------------------
+* update ROS_DISTRO to lunar
+
+1.13.6 (2017-10-31)
+-------------------
+
+1.13.5 (2017-02-14)
+-------------------
 * fix missing export depends (`#128 <https://github.com/ros/ros/issues/128>`_)
 
-1.11.13 (2016-06-27)
---------------------
+1.13.4 (2016-09-19)
+-------------------
+
+1.13.3 (2016-09-16)
+-------------------
+* allow expected ROS_DISTRO value to be overridden at compile time (`#122 <https://github.com/ros/ros/pull/122>`_)
+
+1.13.2 (2016-09-02)
+-------------------
+* avoid putting the rosbuild stacks dir on RPP if it doesn't exist (`#111 <https://github.com/ros/ros/pull/111>`_)
+
+1.13.1 (2016-03-13)
+-------------------
+
+1.13.0 (2016-03-10)
+-------------------
+* update ROS_DISTRO to kinetic
+
+1.12.6 (2016-03-10)
+-------------------
+* expose an API (ros::package::getPlugins) which can map multiple export values to one package name (`#103 <https://github.com/ros/ros/issues/103>`_)
+* deprecate API returning incomplete information (`#103 <https://github.com/ros/ros/issues/103>`_)
 * allow caching of rospack results (`#97 <https://github.com/ros/ros/issues/97>`_)
 
-1.11.12 (2016-03-10)
---------------------
-* expose an API (ros::package::getPlugins) which can map multiple export values to one package name (`#103 <https://github.com/ros/ros/issues/103>`_)
+1.12.5 (2015-10-13)
+-------------------
 
-1.11.11 (2015-10-13)
---------------------
-
-1.11.10 (2015-10-12)
---------------------
+1.12.4 (2015-10-12)
+-------------------
 * improve performance by caching the package mapping in the rospack instance (`#95 <https://github.com/ros/ros/pull/95>`_)
 
-1.11.9 (2015-09-19)
+1.12.3 (2015-09-19)
 -------------------
 
-1.11.8 (2015-04-27)
+1.12.2 (2015-04-27)
 -------------------
 
-1.11.7 (2015-04-16)
+1.12.1 (2015-04-16)
 -------------------
 * remove usage of CATKIN_TEST_RESULTS_DIR environment variable (`#80 <https://github.com/ros/ros/pull/80>`_)
+
+1.12.0 (2014-12-26)
+-------------------
+* update ROS_DISTRO to jade
 
 1.11.6 (2014-12-22)
 -------------------

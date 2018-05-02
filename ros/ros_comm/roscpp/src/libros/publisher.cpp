@@ -28,16 +28,12 @@
 #include "ros/publisher.h"
 #include "ros/publication.h"
 #include "ros/node_handle.h"
-#include "ros/topic_manager.h"  
-#include "ros/config_comm.h" 
-#include "ros/this_node.h"   
-#include <boost/interprocess/sync/interprocess_mutex.hpp>
-#include <boost/interprocess/sync/scoped_lock.hpp>
+#include "ros/topic_manager.h"
 
 namespace ros
 {
 
-Publisher::Impl::Impl() : unadvertised_(false), first_run_(true), default_transport_(SHARED_MEMORY) { }
+Publisher::Impl::Impl() : unadvertised_(false) { }
 
 Publisher::Impl::~Impl()
 {
@@ -60,17 +56,12 @@ void Publisher::Impl::unadvertise()
   }
 }
 
-Publisher::Publisher(const std::string& topic, const std::string& md5sum, 
-  const std::string& datatype, const std::string& message_definition, const NodeHandle& node_handle, 
-  const SubscriberCallbacksPtr& callbacks, const uint32_t& queue_size)
+Publisher::Publisher(const std::string& topic, const std::string& md5sum, const std::string& datatype, const NodeHandle& node_handle, const SubscriberCallbacksPtr& callbacks)
 : impl_(boost::make_shared<Impl>())
 {
   impl_->topic_ = topic;
-  impl_->queue_size_ = queue_size;
-  impl_->alloc_size_ = 0;
   impl_->md5sum_ = md5sum;
   impl_->datatype_ = datatype;
-  impl_->message_definition_ = message_definition;
   impl_->node_handle_ = boost::make_shared<NodeHandle>(node_handle);
   impl_->callbacks_ = callbacks;
 }
@@ -84,12 +75,7 @@ Publisher::~Publisher()
 {
 }
 
-boost::interprocess::interprocess_mutex shm_pub_mutex_;
-
-extern struct ConfigComm g_config_comm ;
-
-void Publisher::publish(const boost::function<SerializedMessage(void)>& serfunc,
-                        SerializedMessage& m) const
+void Publisher::publish(const boost::function<SerializedMessage(void)>& serfunc, SerializedMessage& m) const
 {
   if (!impl_)
   {
@@ -102,114 +88,8 @@ void Publisher::publish(const boost::function<SerializedMessage(void)>& serfunc,
     ROS_ASSERT_MSG(false, "Call to publish() on an invalid Publisher (topic [%s])", impl_->topic_.c_str());
     return;
   }
-  
-  if (impl_ && impl_->isValid())
-  {
-    if (!g_config_comm.transport_mode && 
-      g_config_comm.topic_white_list.find(impl_->topic_) == g_config_comm.topic_white_list.end())
-    {
-      PublicationPtr publication_ptr = TopicManager::instance()->lookupPublication(impl_->topic_);
-      if (!publication_ptr)
-      {
-        return;
-      }
-      
-      impl_->default_transport_ = publication_ptr->getSubscriberlinksTransport();        
 
-      if (impl_->default_transport_ == SHARED_MEMORY)
-      {
-        boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(shm_pub_mutex_);
-        ROS_DEBUG_STREAM("Publish Tranport: " << impl_->topic_ << ", SHARED_MEMORY");
-        publishShm(serfunc, m, impl_->datatype_, impl_->md5sum_, impl_->message_definition_);
-      } 
-      else if (impl_->default_transport_ == SOCKET)
-      {
-        ROS_DEBUG_STREAM("Publish Tranport: " << impl_->topic_ << ", SOCKET");
-        TopicManager::instance()->publish(impl_->topic_, serfunc, m);
-      } 
-      else if (impl_->default_transport_ == BOTH)
-      {
-        ROS_DEBUG_STREAM("Publish Tranport: " << impl_->topic_ << ", BOTH");
-        TopicManager::instance()->publish(impl_->topic_, serfunc, m); 
-
-        boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(shm_pub_mutex_);
-        publishShm(serfunc, m, impl_->datatype_, impl_->md5sum_, impl_->message_definition_);
-      } 
-      else
-      {
-        ROS_ERROR_STREAM("Publish Tranport: " << impl_->default_transport_ << ", UNKNOWN");
-      }
-    } 
-    else
-    {
-      ROS_DEBUG_STREAM("Publish Tranport: " << impl_->topic_ << ", SOCKET");
-      TopicManager::instance()->publish(impl_->topic_, serfunc, m);
-    }
-  }
-}
-
-
-void Publisher::publishShm(const boost::function<SerializedMessage(void)>& serfunc, 
-  SerializedMessage& message, std::string datatype, std::string md5sum, std::string msg_def) const
-{
-  SerializedMessage m2 = serfunc();
-  message.buf = m2.buf;
-  message.num_bytes = m2.num_bytes;
-  message.message_start = m2.message_start;
-
-  // Change queue_size to suitable size
-  uint32_t queue_size_real = 5;
-  
-  if (!impl_->first_run_ && message.num_bytes - 4 >= impl_->alloc_size_)
-  {
-    ROS_DEBUG_STREAM("Reallocated msg queue start");
-    
-    // Get segment handler to remove segment
-    boost::shared_ptr<sharedmem_transport::SharedMemoryUtil> shm_util(new sharedmem_transport::SharedMemoryUtil());
-    boost::interprocess::managed_shared_memory* segment = NULL;
-    sharedmem_transport::SharedMemorySegment* segment_mgr = NULL;
-    sharedmem_transport::SharedMemoryBlock* descriptors_sub = NULL;
-
-    if (shm_util->init_sharedmem(impl_->topic_.c_str(), 
-      segment, segment_mgr, descriptors_sub, queue_size_real)) 
-    {
-      // Set reallocated flag
-      segment_mgr->set_wrote_num(sharedmem_transport::ROS_SHM_SEGMENT_WROTE_NUM);
-      delete segment;
-
-      // Remove segment
-      bool status = shm_util->remove_segment(impl_->topic_.c_str());
-
-      // Set flag to init shared memory
-      if (status)
-      {
-        impl_->first_run_ = true;
-      }
-    }
-
-    ROS_DEBUG_STREAM("Reallocated msg queue end");
-  }
-
-  if (impl_->first_run_)
-  {
-    // Define variables
-    int32_t index = 0;
-    uint64_t msg_size = message.num_bytes - 4 ;
-
-    // Create topic segment
-    if (!impl_->shared_impl_.create_topic_segement(impl_->topic_, index,
-      queue_size_real, msg_size, impl_->alloc_size_, datatype, md5sum, msg_def))
-    {
-      ROS_FATAL("Create topic segment failed");
-      return;
-    }
-
-    // Reset first_run_ flag
-    impl_->first_run_ = false;
-  }
-
-  // Publishing SHM message
-  impl_->shared_impl_.publish_msg(message, queue_size_real, impl_->first_run_);
+  TopicManager::instance()->publish(impl_->topic_, serfunc, m);
 }
 
 void Publisher::incrementSequence() const
@@ -251,21 +131,16 @@ uint32_t Publisher::getNumSubscribers() const
 
 bool Publisher::isLatched() const {
   PublicationPtr publication_ptr;
-  if (impl_ && impl_->isValid()) 
-  {
-    publication_ptr = TopicManager::instance()->lookupPublication(impl_->topic_);
-  } 
-  else 
-  {
+  if (impl_ && impl_->isValid()) {
+    publication_ptr =
+      TopicManager::instance()->lookupPublication(impl_->topic_);
+  } else {
     ROS_ASSERT_MSG(false, "Call to isLatched() on an invalid Publisher");
     throw ros::Exception("Call to isLatched() on an invalid Publisher");
   }
-  if (publication_ptr) 
-  {
+  if (publication_ptr) {
     return publication_ptr->isLatched();
-  } 
-  else 
-  {
+  } else {
     ROS_ASSERT_MSG(false, "Call to isLatched() on an invalid Publisher");
     throw ros::Exception("Call to isLatched() on an invalid Publisher");
   }

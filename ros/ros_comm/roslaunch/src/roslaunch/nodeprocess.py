@@ -95,7 +95,7 @@ def create_master_process(run_id, type_, ros_root, port, num_workers=NUM_WORKERS
 
     _logger.info("process[master]: launching with args [%s]"%args)
     log_output = False
-    return LocalProcess(run_id, package, 'master', args, os.environ, log_output, None)
+    return LocalProcess(run_id, package, 'master', args, os.environ, log_output, None, required=True)
 
 def create_node_process(run_id, node, master_uri):
     """
@@ -290,6 +290,12 @@ class LocalProcess(Process):
                 cwd = get_ros_root()
             else:
                 cwd = rospkg.get_ros_home()
+            if not os.path.exists(cwd):
+                try:
+                    os.makedirs(cwd)
+                except OSError:
+                    # exist_ok=True
+                    pass
 
             _logger.info("process[%s]: start w/ args [%s]", self.name, self.args)
             _logger.info("process[%s]: cwd will be [%s]", self.name, cwd)

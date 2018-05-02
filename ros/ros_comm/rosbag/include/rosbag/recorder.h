@@ -45,6 +45,7 @@
 #include <queue>
 #include <string>
 #include <vector>
+#include <list>
 
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
@@ -103,20 +104,14 @@ struct ROSBAG_DECL RecorderOptions
     uint32_t        chunk_size;
     uint32_t        limit;
     bool            split;
-    uint32_t        max_size;
+    uint64_t        max_size;
+    uint32_t        max_splits;
     ros::Duration   max_duration;
     std::string     node;
     unsigned long long min_space;
     std::string min_space_str;
 
     std::vector<std::string> topics;
-};
-
-struct ROSBAG_DECL envItem
-{
-    std::string datatype;
-    std::string md5sum;
-    std::string msg_def;
 };
 
 class ROSBAG_DECL Recorder
@@ -147,6 +142,7 @@ private:
     //    void doQueue(topic_tools::ShapeShifter::ConstPtr msg, std::string const& topic, boost::shared_ptr<ros::Subscriber> subscriber, boost::shared_ptr<int> count);
     void doQueue(const ros::MessageEvent<topic_tools::ShapeShifter const>& msg_event, std::string const& topic, boost::shared_ptr<ros::Subscriber> subscriber, boost::shared_ptr<int> count);
     void doRecord();
+    void checkNumSplits();
     bool checkSize();
     bool checkDuration(const ros::Time&);
     void doRecordSnapshotter();
@@ -164,6 +160,7 @@ private:
 
     std::string                   target_filename_;
     std::string                   write_filename_;
+    std::list<std::string>        current_files_;
 
     std::set<std::string>         currently_recording_;  //!< set of currenly recording topics
     int                           num_subscribers_;      //!< used for book-keeping of our number of subscribers
@@ -188,8 +185,6 @@ private:
     boost::mutex                  check_disk_mutex_;
     ros::WallTime                 check_disk_next_;
     ros::WallTime                 warn_next_;
-
-    std::map<std::string, envItem> env_info_;
 };
 
 } // namespace rosbag

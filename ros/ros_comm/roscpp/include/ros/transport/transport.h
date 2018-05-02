@@ -120,9 +120,7 @@ public:
    * \brief Returns a string description of both the type of transport and who the transport is connected to
    */
   virtual std::string getTransportInfo() = 0;
-  virtual std::string getClientURI() = 0;
-  virtual std::string getLocalIp() = 0;
-  
+
   /**
    * \brief Returns a boolean to indicate if the transport mechanism is reliable or not
    */
@@ -132,11 +130,6 @@ public:
    * \brief Provides an opportunity for transport-specific options to come in through the header
    */
   virtual void parseHeader(const Header& header) { (void)header; }
-  
-  /**
-   * \brief get socket
-   */
-  virtual int getSocket() = 0;
 
 protected:
   Callback disconnect_cb_;

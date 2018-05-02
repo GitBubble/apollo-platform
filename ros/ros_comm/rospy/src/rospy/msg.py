@@ -45,8 +45,6 @@ import genpy
 import rospy.exceptions
 import rospy.names
 
-import google.protobuf.message
-
 class AnyMsg(genpy.Message):
     """
     Message class to use for subscribing to any topic regardless
@@ -71,7 +69,7 @@ class AnyMsg(genpy.Message):
     def serialize(self, buff):
         """AnyMsg provides an implementation so that a node can forward messages w/o (de)serialization"""
         if self._buff is None:
-            raise rospy.exceptions("AnyMsg is not initialized")
+            raise rospy.exceptions.ROSException("AnyMsg is not initialized")
         else:
             buff.write(self._buff)
             
@@ -108,8 +106,6 @@ def args_kwds_to_message(data_class, args, kwds):
     else:
         if len(args) == 1:
             arg = args[0]
-            if isinstance(arg, google.protobuf.message.Message):
-                return arg
             # #2584: have to compare on md5sum as isinstance check can fail in dyngen case
             if hasattr(arg, '_md5sum') and (arg._md5sum == data_class._md5sum or isinstance(arg, AnyMsg)):
                 return arg

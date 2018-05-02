@@ -1,4 +1,0 @@
-struct MetaMessage {
-    unsigned long message_id;
-    string data;
-};

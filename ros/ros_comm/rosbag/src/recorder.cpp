@@ -59,9 +59,8 @@
 #include <topic_tools/shape_shifter.h>
 
 #include "ros/network.h"
-#include "ros/broadcast_manager.h"
 #include "ros/xmlrpc_manager.h"
-#include "XmlRpc.h"
+#include "xmlrpcpp/XmlRpc.h"
 
 #define foreach BOOST_FOREACH
 
@@ -109,6 +108,7 @@ RecorderOptions::RecorderOptions() :
     limit(0),
     split(false),
     max_size(0),
+    max_splits(0),
     max_duration(-1.0),
     node(""),
     min_space(1024 * 1024 * 1024),
@@ -401,6 +401,23 @@ void Recorder::stopWriting() {
     rename(write_filename_.c_str(), target_filename_.c_str());
 }
 
+void Recorder::checkNumSplits()
+{
+    if(options_.max_splits>0)
+    {
+        current_files_.push_back(target_filename_);
+        if(current_files_.size()>options_.max_splits)
+        {
+            int err = unlink(current_files_.front().c_str());
+            if(err != 0)
+            {
+                ROS_ERROR("Unable to remove %s: %s", current_files_.front().c_str(), strerror(errno));
+            }
+            current_files_.pop_front();
+        }
+    }
+}
+
 bool Recorder::checkSize()
 {
     if (options_.max_size > 0)
@@ -411,6 +428,7 @@ bool Recorder::checkSize()
             {
                 stopWriting();
                 split_count_++;
+                checkNumSplits();
                 startWriting();
             } else {
                 ros::shutdown();
@@ -433,6 +451,7 @@ bool Recorder::checkDuration(const ros::Time& t)
                 {
                     stopWriting();
                     split_count_++;
+                    checkNumSplits();
                     start_time_ += options_.max_duration;
                     startWriting();
                 }
@@ -499,32 +518,8 @@ void Recorder::doRecord() {
         if (checkDuration(out.time))
             break;
 
-        if (scheduledCheckDisk() && checkLogging()) {
-            if (std::string(ros::message_traits::datatype(*out.msg)) == "*") {
-                std::map<std::string, envItem>::iterator i = env_info_.find(out.topic);
-                if (i != env_info_.end()) {
-                    bag_.write(out.topic, out.time, *out.msg, out.connection_header, 
-                        i->second.datatype, i->second.md5sum, i->second.msg_def);
-                    continue;
-                } else {
-                    boost::shared_ptr<sharedmem_transport::SharedMemoryUtil> 
-                        util(new sharedmem_transport::SharedMemoryUtil());
-                    boost::interprocess::managed_shared_memory* segment = util->get_segment(out.topic.c_str());
-                    if (segment != NULL) {
-                        envItem env_item;
-                        env_item.datatype = util->get_datatype(segment);
-                        env_item.md5sum = util->get_md5sum(segment);
-                        env_item.msg_def = util->get_msg_def(segment);
-                        env_info_.insert(make_pair(out.topic, env_item));
-                        bag_.write(out.topic, out.time, *out.msg, out.connection_header, 
-                            env_item.datatype, env_item.md5sum, env_item.msg_def);
-                        continue;
-                    } 
-                }
-                
-            }
+        if (scheduledCheckDisk() && checkLogging())
             bag_.write(out.topic, out.time, *out.msg, out.connection_header);
-        }
     }
 
     stopWriting();
@@ -572,13 +567,12 @@ void Recorder::doCheckMaster(ros::TimerEvent const& e, ros::NodeHandle& node_han
     (void)e;
     (void)node_handle;
     ros::master::V_TopicInfo topics;
-    ros::BroadcastManager::instance()->getTopics(topics);
-    foreach(ros::master::TopicInfo const& t, topics) {
-        if (shouldSubscribeToTopic(t.name))
-        {
-		     subscribe(t.name);
-        }
-	}
+    if (ros::master::getTopics(topics)) {
+		foreach(ros::master::TopicInfo const& t, topics) {
+			if (shouldSubscribeToTopic(t.name))
+				subscribe(t.name);
+		}
+    }
     
     if (options_.node != std::string(""))
     {

@@ -2,33 +2,75 @@
 Changelog for package rosunit
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.11.14 (2017-03-06)
---------------------
-* improve error message when creating test directory fails (`#134 <https://github.com/ros/ros/pull/134>`_)
-* fix race condition creating folder (`#130 <https://github.com/ros/ros/pull/130>`_)
-* fix check of test type (`#121 <https://github.com/ros/ros/issues/121>`_, `#123 <https://github.com/ros/ros/issues/123>`_)
-
-1.11.13 (2016-06-27)
---------------------
-
-1.11.12 (2016-03-10)
---------------------
-* add ability to load tests using dotnames in rosunit (`#101 <https://github.com/ros/ros/issues/101>`_)
-
-1.11.11 (2015-10-13)
---------------------
-
-1.11.10 (2015-10-12)
---------------------
-
-1.11.9 (2015-09-19)
+1.14.3 (2018-01-30)
 -------------------
 
-1.11.8 (2015-04-27)
+1.14.2 (2017-10-26)
+-------------------
+* use python constants rather than hardcoded integers for error codes (`#153 <https://github.com/ros/ros/issues/153>`_)
+
+1.14.1 (2017-07-27)
+-------------------
+* fix syntax of unicode raw string in Python 3 (`#150 <https://github.com/ros/ros/pull/150>`_)
+* ensure cwd exists (`#143 <https://github.com/ros/ros/pull/143>`_)
+* more searchable testcase result message (`#139 <https://github.com/ros/ros/pull/139>`_)
+
+1.14.0 (2017-02-22)
+-------------------
+
+1.13.6 (2017-10-31)
+-------------------
+* use python constants rather than hardcoded integers for error codes (`#153 <https://github.com/ros/ros/issues/153>`_)
+* fix syntax of unicode raw string in Python 3 (`#150 <https://github.com/ros/ros/pull/150>`_)
+* ensure cwd exists (`#143 <https://github.com/ros/ros/pull/143>`_)
+* more searchable testcase result message (`#139 <https://github.com/ros/ros/pull/139>`_)
+
+1.13.5 (2017-02-14)
+-------------------
+* improve error message when creating test directory fails (`#134 <https://github.com/ros/ros/pull/134>`_)
+* fix race condition creating folder (`#130 <https://github.com/ros/ros/pull/130>`_)
+
+1.13.4 (2016-09-19)
+-------------------
+* fix test type handling (`#123 <https://github.com/ros/ros/issues/123>`_)
+
+1.13.3 (2016-09-16)
+-------------------
+* allow custom class_name, testcase_name in test_xx_junit_xml (`#119 <https://github.com/ros/ros/issues/119>`_)
+* fix check of test type (`#121 <https://github.com/ros/ros/issues/121>`_)
+
+1.13.2 (2016-09-02)
+-------------------
+
+1.13.1 (2016-03-13)
+-------------------
+* fix a regression in XML reports introduced in 1.12.6 (`#109 <https://github.com/ros/ros/pull/109>`_)
+
+1.13.0 (2016-03-10)
+-------------------
+
+1.12.6 (2016-03-10)
+-------------------
+* remove invalid characters from XML unit test results (`#89 <https://github.com/ros/ros/pull/89>`_, `#108 <https://github.com/ros/ros/pull/108>`_)
+* add ability to load tests using dotnames in rosunit (`#101 <https://github.com/ros/ros/issues/101>`_)
+
+1.12.5 (2015-10-13)
+-------------------
+
+1.12.4 (2015-10-12)
+-------------------
+
+1.12.3 (2015-09-19)
+-------------------
+
+1.12.2 (2015-04-27)
 -------------------
 * allow custom environment when determining test results location (`#82 <https://github.com/ros/ros/pull/82>`_)
 
-1.11.7 (2015-04-16)
+1.12.1 (2015-04-16)
+-------------------
+
+1.12.0 (2014-12-26)
 -------------------
 
 1.11.6 (2014-12-22)

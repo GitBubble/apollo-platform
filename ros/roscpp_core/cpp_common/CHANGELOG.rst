@@ -2,7 +2,37 @@
 Changelog for package cpp_common
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.5.8 (2017-03-06)
+0.6.9 (2018-02-02)
+------------------
+
+0.6.8 (2018-01-26)
+------------------
+* define console_bridge macro with API call rather than relying on short macro being defined (`#71 <https://github.com/ros/roscpp_core/issues/71>`_)
+
+0.6.7 (2017-11-03)
+------------------
+* fix support for console_bridge < 0.3.0 (`#70 <https://github.com/ros/roscpp_core/issues/70>`_, regression of 0.6.6)
+
+0.6.6 (2017-10-25)
+------------------
+* replace usage of deprecated logError macros (`#69 <https://github.com/ros/roscpp_core/issues/69>`_)
+
+0.6.5 (2017-07-27)
+------------------
+
+0.6.4 (2017-06-06)
+------------------
+
+0.6.3 (2017-05-15)
+------------------
+
+0.6.2 (2017-02-14)
+------------------
+
+0.6.1 (2016-09-02)
+------------------
+
+0.6.0 (2016-03-17)
 ------------------
 
 0.5.7 (2016-03-09)

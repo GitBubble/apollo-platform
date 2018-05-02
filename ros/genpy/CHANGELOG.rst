@@ -2,9 +2,43 @@
 Changelog for package genpy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.5.10 (2016-06-27)
--------------------
-* add __ne_\_ magic method (`#62 <https://github.com/ros/genpy/pull/62>`_)
+0.6.7 (2017-10-26)
+------------------
+* use errno to detect existing dir (`#89 <https://github.com/ros/genpy/issues/89>`_)
+* fix typo (`#84 <https://github.com/ros/genpy/issues/84>`_)
+
+0.6.6 (2017-07-27)
+------------------
+* add escaping for strings which is valid in YAML (`#79 <https://github.com/ros/genpy/issues/79>`_)
+* fix inefficient canon method in rostime (`#77 <https://github.com/ros/genpy/issues/77>`_)
+
+0.6.5 (2017-03-06)
+------------------
+* expose spec for dynamically generated messages (`#75 <https://github.com/ros/genpy/issues/75>`_)
+
+0.6.4 (2017-02-27)
+------------------
+* fix default value for non-primitive fixed-size arrays, regression of 0.6.1 (`#74 <https://github.com/ros/genpy/issues/74>`)
+
+0.6.3 (2016-10-24)
+------------------
+* fix Python 3 regressions (`#71 <https://github.com/ros/genpy/issues/71>`_)
+* use Python safe subfields for nested types (`#69 <https://github.com/ros/genpy/issues/69>`_)
+
+0.6.2 (2016-09-03)
+------------------
+* fix regression regarding lazy init introduced in 0.6.1 (`#67 <https://github.com/ros/genpy/issues/67>`_)
+
+0.6.1 (2016-09-02)
+------------------
+* lazy init struct (`#65 <https://github.com/ros/genpy/issues/65>`_)
+* fix default value of lists to not expand to N items in the generated code (`#64 <https://github.com/ros/genpy/issues/64>`_)
+* simpler and more canonical hash (`#55 <https://github.com/ros/genpy/pull/55>`_)
+* various improvements to the time and duration classes (`#63 <https://github.com/ros/genpy/issues/63>`_)
+
+0.6.0 (2016-04-21)
+------------------
+* change semantic of integer division for duration (`#59 <https://github.com/ros/genpy/issues/59>`_)
 
 0.5.9 (2016-04-19)
 ------------------

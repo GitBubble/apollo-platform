@@ -128,7 +128,7 @@ def probe_all_services(ctx):
     errors = []
     for service_name in ctx.services:
         try:
-            service_uri = master.lookupServiceCache(service_name)
+            service_uri = master.lookupService(service_name)
         except:
             ctx.errors.append(WtfError("cannot contact ROS Master at %s"%rosgraph.rosenv.get_master_uri()))
             raise WtfException("roswtf lost connection to the ROS Master at %s"%rosgraph.rosenv.get_master_uri())

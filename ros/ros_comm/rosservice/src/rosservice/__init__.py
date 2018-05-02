@@ -50,9 +50,9 @@ import sys
 import socket
 
 try:
-    from cStringIO import StringIO  # Python 2.x
+    from cStringIO import StringIO as BufferType  # Python 2.x
 except ImportError:
-    from io import StringIO  # Python 3.x
+    from io import BytesIO as BufferType  # Python 3.x
 
 import genpy
 
@@ -121,7 +121,7 @@ def get_service_headers(service_name, service_uri):
             header = { 'probe':'1', 'md5sum':'*',
                        'callerid':'/rosservice', 'service':service_name}
             rosgraph.network.write_ros_handshake_header(s, header)
-            return rosgraph.network.read_ros_handshake_header(s, StringIO(), 2048)
+            return rosgraph.network.read_ros_handshake_header(s, BufferType(), 2048)
         except socket.error:
             raise ROSServiceIOException("Unable to communicate with service [%s], address [%s]"%(service_name, service_uri))
     finally:
@@ -138,7 +138,7 @@ def get_service_type(service_name):
     """
     master = _get_master()
     try:
-        service_uri = master.lookupServiceCache(service_name)
+        service_uri = master.lookupService(service_name)
     except socket.error:
         raise ROSServiceIOException("Unable to communicate with master!")
     except rosgraph.MasterError:
@@ -172,7 +172,7 @@ def get_service_uri(service_name):
     try:
         master = _get_master()
         try:
-            return master.lookupServiceCache(service_name)
+            return master.lookupService(service_name)
         except rosgraph.MasterException:
             return None
     except socket.error:

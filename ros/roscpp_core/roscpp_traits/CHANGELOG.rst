@@ -2,7 +2,38 @@
 Changelog for package roscpp_traits
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.5.8 (2017-03-06)
+0.6.9 (2018-02-02)
+------------------
+
+0.6.8 (2018-01-26)
+------------------
+
+0.6.7 (2017-11-03)
+------------------
+
+0.6.6 (2017-10-25)
+------------------
+* fix assignment operator of MessageEvent (`#66 <https://github.com/ros/roscpp_core/issues/66>`_)
+* fix docblock of ROS_DECLARE_MESSAGE_WITH_ALLOCATOR (`#67 <https://github.com/ros/roscpp_core/issues/67>`_)
+
+0.6.5 (2017-07-27)
+------------------
+
+0.6.4 (2017-06-06)
+------------------
+
+0.6.3 (2017-05-15)
+------------------
+
+0.6.2 (2017-02-14)
+------------------
+* fix warning when compiling with -Wpedantic (`#53 <https://github.com/ros/roscpp_core/issues/53>`_)
+* fix warning about unused parameters (`#52 <https://github.com/ros/roscpp_core/issues/52>`_)
+
+0.6.1 (2016-09-02)
+------------------
+
+0.6.0 (2016-03-17)
 ------------------
 
 0.5.7 (2016-03-09)

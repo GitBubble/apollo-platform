@@ -48,6 +48,9 @@
 #elif defined(__ANDROID__)
   // For readv() and writev() on ANDROID
   #include <sys/uio.h>
+#elif defined(_POSIX_VERSION)
+  // For readv() and writev()
+  #include <sys/uio.h>
 #endif
 
 namespace ros
@@ -706,24 +709,6 @@ std::string TransportUDP::getClientURI()
   getpeername(sock_, (sockaddr *)&sas, &sas_len);
 
   sockaddr_in *sin = (sockaddr_in *)&sas;
-
-  char namebuf[128];
-  int port = ntohs(sin->sin_port);
-  strcpy(namebuf, inet_ntoa(sin->sin_addr));
-
-  std::string ip = namebuf;
-  std::stringstream uri;
-  uri << ip << ":" << port;
-
-  return uri.str();
-}
-
-std::string TransportUDP::getLocalIp()
-{
-  socklen_t local_address_len = sizeof(local_address_);
-  getsockname(sock_, (sockaddr *)&local_address_, &local_address_len); 
-
-  sockaddr_in *sin = (sockaddr_in *)&local_address_;
 
   char namebuf[128];
   int port = ntohs(sin->sin_port);

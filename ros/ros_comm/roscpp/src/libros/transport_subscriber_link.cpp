@@ -99,16 +99,6 @@ bool TransportSubscriberLink::handleHeader(const Header& header)
     return false;
   }
 
-  std::string node_type;
-  if (header.getValue("node_type", node_type) && node_type == "rospy")
-  {
-    setRospy(true);
-  } 
-  else
-  {
-    setRospy(false);
-  }
-
   destination_caller_id_ = client_callerid;
   connection_id_ = ConnectionManager::instance()->getNewConnectionID();
   topic_ = pt->getName();
@@ -131,13 +121,14 @@ bool TransportSubscriberLink::handleHeader(const Header& header)
 
 void TransportSubscriberLink::onConnectionDropped(const ConnectionPtr& conn)
 {
+  (void)conn;
   ROS_ASSERT(conn == connection_);
 
   PublicationPtr parent = parent_.lock();
 
   if (parent)
   {
-    ROSCPP_LOG_DEBUG("Connection to subscriber [%s] to topic [%s] dropped", connection_->getRemoteString().c_str(), topic_.c_str());
+    ROSCPP_CONN_LOG_DEBUG("Connection to subscriber [%s] to topic [%s] dropped", connection_->getRemoteString().c_str(), topic_.c_str());
 
     parent->removeSubscriberLink(shared_from_this());
   }

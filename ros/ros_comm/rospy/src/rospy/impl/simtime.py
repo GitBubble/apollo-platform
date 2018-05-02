@@ -57,12 +57,9 @@ def _is_use_simtime():
     # until I reorganize the client vs. internal APIs better.
     master_uri = rosgraph.get_master_uri()
     m = rospy.core.xmlrpcapi(master_uri)
-    try:
-        code, msg, val = m.getParam(rospy.names.get_caller_id(), _USE_SIMTIME)
-        if code == 1 and val:
-            return True
-    except Exception as e:
-        pass
+    code, msg, val = m.getParam(rospy.names.get_caller_id(), _USE_SIMTIME)
+    if code == 1 and val:
+        return True
     return False
     
 from rospy.rostime import _set_rostime
@@ -80,7 +77,7 @@ def init_simtime():
     logger = logging.getLogger("rospy.simtime")
     try:
         if not _is_use_simtime():
-            print("%s is not set, will not subscribe to simulated time [%s] topic"%(_USE_SIMTIME, _ROSCLOCK))
+            logger.info("%s is not set, will not subscribe to simulated time [%s] topic"%(_USE_SIMTIME, _ROSCLOCK))
         else:
             global _rostime_sub, _clock_sub
             if _rostime_sub is None:
@@ -92,7 +89,5 @@ def init_simtime():
         rospy.rostime.set_rostime_initialized(True)
         return True
     except Exception as e:
-        #logger.error("Unable to initialize %s: %s\n%s", _ROSCLOCK, e, traceback.format_exc())
-        #return False
-        rospy.rostime.set_rostime_initialized(True)
-        return True
+        logger.error("Unable to initialize %s: %s\n%s", _ROSCLOCK, e, traceback.format_exc())
+        return False

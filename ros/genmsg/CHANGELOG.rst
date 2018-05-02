@@ -2,6 +2,15 @@
 Changelog for package genmsg
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.5.10 (2018-01-25)
+-------------------
+* add architecture_independent flag (`#71 <https://github.com/ros/genmsg/issues/71>`_)
+
+0.5.9 (2017-07-27)
+------------------
+* API improvements for use by client code (`#70 <https://github.com/ros/genmsg/issues/70>`_)
+* fix test: full_name is not optional (`#69 <https://github.com/ros/genmsg/issues/69>`_)
+
 0.5.8 (2016-09-02)
 ------------------
 * check target across package for existance (`#65 <https://github.com/ros/genmsg/issues/65>`_)

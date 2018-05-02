@@ -63,12 +63,9 @@ Common parent classes for all rospy topics. The rospy topic autogenerators
 create classes that are children of these implementations.
 """
 
-from rospy.impl.registration import get_service_manager, get_broadcast_manager
 
 import struct
 import select
-import ctypes
-
 try:
     from cStringIO import StringIO #Python 2.x
     python3 = 0
@@ -105,18 +102,16 @@ _logger = logging.getLogger('rospy.topics')
 import genpy
 Message = genpy.Message
 
-import roslib.message
-
-import google.protobuf
-
-# socket_base = "/socket_topic"
-
 #######################################################################
 # Base classes for all client-API instantiated pub/sub
 #
 # There are two trees: Topic and _TopicImpl. Topic is the client API
 # for interfacing with topics, while _TopicImpl implements the
 # underlying connection details. 
+
+if not hasattr(select, 'EPOLLRDHUP'):
+    select.EPOLLRDHUP = 0x2000
+
 
 class Topic(object):
     """Base class of L{Publisher} and L{Subscriber}"""
@@ -131,7 +126,7 @@ class Topic(object):
         @type  reg_type: str
         @raise ValueError: if parameters are invalid
         """
-
+        
         if not name or not isstring(name):
             raise ValueError("topic name is not a non-empty string")
         try:
@@ -143,9 +138,9 @@ class Topic(object):
             raise ValueError("topic name must be ascii/utf-8 compatible")
         if data_class is None:
             raise ValueError("topic parameter 'data_class' is not initialized")
-        if not type(data_class) == type and not issubclass(data_class, google.protobuf.message.Message):
+        if not type(data_class) == type:
             raise ValueError("data_class [%s] is not a class"%data_class) 
-        if not issubclass(data_class, genpy.Message) and not issubclass(data_class, google.protobuf.message.Message):
+        if not issubclass(data_class, genpy.Message):
             raise ValueError("data_class [%s] is not a message data class"%data_class.__class__.__name__)
         # #2202
         if not rosgraph.names.is_legal_name(name):
@@ -162,7 +157,6 @@ class Topic(object):
 
         self.name = self.resolved_name # #1810 for backwards compatibility
 
-        roslib.message.add_rosmsg_interface_for_protobuf(data_class)
         self.data_class = data_class
         self.type = data_class._type
         self.md5sum = data_class._md5sum
@@ -198,25 +192,28 @@ class Poller(object):
     on multiple platforms.  NOT thread-safe.
     """
     def __init__(self):
-        try:
+        if hasattr(select, 'epoll'):
+            self.poller = select.epoll()
+            self.add_fd = self.add_epoll
+            self.remove_fd = self.remove_epoll
+            self.error_iter = self.error_epoll_iter
+        elif hasattr(select, 'poll'):
             self.poller = select.poll()
             self.add_fd = self.add_poll
             self.remove_fd = self.remove_poll
             self.error_iter = self.error_poll_iter
-        except:
-            try:
-                # poll() not available, try kqueue
-                self.poller = select.kqueue()
-                self.add_fd = self.add_kqueue
-                self.remove_fd = self.remove_kqueue
-                self.error_iter = self.error_kqueue_iter
-                self.kevents = []
-            except:
-                #TODO: non-Noop impl for Windows
-                self.poller = self.noop
-                self.add_fd = self.noop
-                self.remove_fd = self.noop
-                self.error_iter = self.noop_iter
+        elif hasattr(select, 'kqueue'):
+            self.poller = select.kqueue()
+            self.add_fd = self.add_kqueue
+            self.remove_fd = self.remove_kqueue
+            self.error_iter = self.error_kqueue_iter
+            self.kevents = []
+        else:
+            #TODO: non-Noop impl for Windows
+            self.poller = self.noop
+            self.add_fd = self.noop
+            self.remove_fd = self.noop
+            self.error_iter = self.noop_iter
 
     def noop(self, *args):
         pass
@@ -236,6 +233,18 @@ class Poller(object):
         events = self.poller.poll(0)
         for fd, event in events:
             if event & (select.POLLHUP | select.POLLERR):
+                yield fd
+
+    def add_epoll(self, fd):
+        self.poller.register(fd, select.EPOLLHUP|select.EPOLLERR|select.EPOLLRDHUP)
+
+    def remove_epoll(self, fd):
+        self.poller.unregister(fd)
+
+    def error_epoll_iter(self):
+        events = self.poller.poll(0)
+        for fd, event in events:
+            if event & (select.EPOLLHUP | select.EPOLLERR | select.EPOLLRDHUP):
                 yield fd
 
     def add_kqueue(self, fd):
@@ -290,9 +299,6 @@ class _TopicImpl(object):
         self.ref_count = 0
 
         self.connection_poll = Poller()
-        self._libshm_manager_file = os.path.join(
-            os.environ['ROS_ROOT'], "../../lib/", "libshm_manager.so")
-        self._pdll = ctypes.CDLL(self._libshm_manager_file)
 
     def __del__(self):
         # very similar to close(), but have to be more careful in a __del__ what we call
@@ -353,21 +359,6 @@ class _TopicImpl(object):
         return False
 
     def _remove_connection(self, connections, c):
-        # Check and remove segment
-        try:
-            # Get node info
-            pubs = get_broadcast_manager().get_pubs()[self.resolved_name]
-            subs = get_broadcast_manager().get_subs()[self.resolved_name]
-
-            # Count total nums
-            count = len(pubs) + len(subs)
-
-            # Remove segment
-            if count < 1:
-                self._pdll.remove_segment(self.resolved_name)
-        except:
-            pass
-
         # Remove from poll instance as well as connections
         try:
             self.connection_poll.remove_fd(c.fileno())
@@ -466,6 +457,17 @@ class _TopicImpl(object):
                 c.set_cleanup_callback(cleanup_cb_wrapper)
             
             return True
+
+    def check(self):
+        fds_to_remove = list(self.connection_poll.error_iter())
+        if fds_to_remove:
+            with self.c_lock:
+                new_connections = self.connections[:]
+                to_remove = [x for x in new_connections if x.fileno() in fds_to_remove]
+                for x in to_remove:
+                    rospydebug("removing connection to %s, connection error detected"%(x.endpoint_id))
+                    self._remove_connection(new_connections, x)
+                self.connections = new_connections
 
     def remove_connection(self, c):
         """
@@ -1164,6 +1166,15 @@ class _TopicManager(object):
                 t.close()
             self.pubs.clear()
             self.subs.clear()        
+
+            
+    def check_all(self):
+        """
+        Check all registered publication and subscriptions.
+        """
+        with self.lock:
+            for t in chain(iter(self.pubs.values()), iter(self.subs.values())):
+                t.check()
         
     def _add(self, ps, rmap, reg_type):
         """

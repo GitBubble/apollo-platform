@@ -26,7 +26,6 @@
  */
 
 #include "ros/master.h"
-#include "ros/broadcast_manager.h"
 #include "ros/xmlrpc_manager.h"
 #include "ros/this_node.h"
 #include "ros/init.h"
@@ -35,7 +34,7 @@
 #include <ros/console.h>
 #include <ros/assert.h>
 
-#include "XmlRpc.h"
+#include "xmlrpcpp/XmlRpc.h"
 
 namespace ros
 {
@@ -124,13 +123,52 @@ bool check()
   return execute("getPid", args, result, payload, false);
 }
 
-bool getTopics(V_TopicInfo& topics) {
-  BroadcastManager::instance()->getTopicTypes(topics); 
+bool getTopics(V_TopicInfo& topics)
+{
+  XmlRpc::XmlRpcValue args, result, payload;
+  args[0] = this_node::getName();
+  args[1] = ""; //TODO: Fix this
+
+  if (!execute("getPublishedTopics", args, result, payload, true))
+  {
+    return false;
+  }
+
+  topics.clear();
+  for (int i = 0; i < payload.size(); i++)
+  {
+    topics.push_back(TopicInfo(std::string(payload[i][0]), std::string(payload[i][1])));
+  }
+
   return true;
 }
 
-bool getNodes(V_string& nodes) {
-  BroadcastManager::instance()->getNodes(nodes); 
+bool getNodes(V_string& nodes)
+{
+  XmlRpc::XmlRpcValue args, result, payload;
+  args[0] = this_node::getName();
+
+  if (!execute("getSystemState", args, result, payload, true))
+  {
+    return false;
+  }
+
+  S_string node_set;
+  for (int i = 0; i < payload.size(); ++i)
+  {
+    for (int j = 0; j < payload[i].size(); ++j)
+    {
+      XmlRpc::XmlRpcValue val = payload[i][j][1];
+      for (int k = 0; k < val.size(); ++k)
+      {
+        std::string name = payload[i][j][1][k];
+        node_set.insert(name);
+      }
+    }
+  }
+
+  nodes.insert(nodes.end(), node_set.begin(), node_set.end());
+
   return true;
 }
 
@@ -140,7 +178,7 @@ boost::mutex g_xmlrpc_call_mutex;
 
 bool execute(const std::string& method, const XmlRpc::XmlRpcValue& request, XmlRpc::XmlRpcValue& response, XmlRpc::XmlRpcValue& payload, bool wait_for_master)
 {
-  ros::WallTime start_time = ros::WallTime::now();
+  ros::SteadyTime start_time = ros::SteadyTime::now();
 
   std::string master_host = getHost();
   uint32_t master_port = getPort();
@@ -148,9 +186,9 @@ bool execute(const std::string& method, const XmlRpc::XmlRpcValue& request, XmlR
   bool printed = false;
   bool slept = false;
   bool ok = true;
+  bool b = false;
   do
   {
-    bool b = false;
     {
 #if defined(__APPLE__)
       boost::mutex::scoped_lock lock(g_xmlrpc_call_mutex);
@@ -175,7 +213,7 @@ bool execute(const std::string& method, const XmlRpc::XmlRpcValue& request, XmlR
         return false;
       }
 
-      if (!g_retry_timeout.isZero() && (ros::WallTime::now() - start_time) >= g_retry_timeout)
+      if (!g_retry_timeout.isZero() && (ros::SteadyTime::now() - start_time) >= g_retry_timeout)
       {
         ROS_ERROR("[%s] Timed out trying to connect to the master after [%f] seconds", method.c_str(), g_retry_timeout.toSec());
         XMLRPCManager::instance()->releaseXMLRPCClient(c);
@@ -207,7 +245,7 @@ bool execute(const std::string& method, const XmlRpc::XmlRpcValue& request, XmlR
 
   XMLRPCManager::instance()->releaseXMLRPCClient(c);
 
-  return true;
+  return b;
 }
 
 } // namespace master

@@ -63,8 +63,6 @@ from rospy.service import ServiceException
 
 from rospy.impl.transport import Transport, BIDIRECTIONAL
 
-import google.protobuf
-
 logger = logging.getLogger('rospy.tcpros')
 
 # Receive buffer size for topics/services (in bytes)
@@ -86,11 +84,8 @@ def _is_use_tcp_keepalive():
         # in order to prevent circular dependencies, this does not use the
         # builtin libraries for interacting with the parameter server
         m = rospy.core.xmlrpcapi(rosgraph.get_master_uri())
-        try:
-            code, msg, val = m.getParam(rospy.names.get_caller_id(), _PARAM_TCP_KEEPALIVE)
-            _use_tcp_keepalive = val if code == 1 else True
-        except Exception:
-            _use_tcp_keepalive = True
+        code, msg, val = m.getParam(rospy.names.get_caller_id(), _PARAM_TCP_KEEPALIVE)
+        _use_tcp_keepalive = val if code == 1 else True
         return _use_tcp_keepalive 
 
 def recv_buff(sock, b, buff_size):
@@ -377,7 +372,7 @@ class TCPROSTransportProtocol(object):
         @param buff_size: receive buffer size (in bytes) for reading from the connection.
         @type  buff_size: int
         """
-        if recv_data_class and not issubclass(recv_data_class, Message) and not issubclass(recv_data_class, google.protobuf.message.Message):
+        if recv_data_class and not issubclass(recv_data_class, Message):
             raise TransportInitError("Unable to initialize transport: data class is not a message data class")
         self.resolved_name = resolved_name
         self.recv_data_class = recv_data_class
@@ -567,10 +562,23 @@ class TCPROSTransport(Transport):
             raise
         except Exception as e:
             #logerr("Unknown error initiating TCP/IP socket to %s:%s (%s): %s"%(dest_addr, dest_port, endpoint_id, str(e)))
-            rospywarn("Unknown error initiating TCP/IP socket to %s:%s (%s): %s"%(dest_addr, dest_port, endpoint_id, traceback.format_exc()))            
-
-            # FATAL: no reconnection as error is unknown
-            self.close()
+            rospywarn("Unknown error initiating TCP/IP socket to %s:%s (%s): %s"%(dest_addr, dest_port, endpoint_id, traceback.format_exc()))
+            # check for error type and reason. On unknown errors the socket will be closed
+            # to avoid reconnection and error reproduction
+            if not isinstance(e, socket.error):
+                # FATAL: no reconnection as error is unknown
+                self.close()
+            elif not isinstance(e, socket.timeout) and e.errno not in [100, 101, 102, 103, 110, 112, 113]:
+                # reconnect in follow cases, otherwise close the socket:
+                # 1. socket.timeout: on timeouts caused by delays on wireless links
+                # 2. ENETDOWN (100), ENETUNREACH (101), ENETRESET (102), ECONNABORTED (103):
+                #     while using ROS_HOSTNAME ros binds to a specific interface. Theses errors
+                #     are thrown on interface shutdown e.g. on reconnection in LTE networks
+                # 3. ETIMEDOUT (110): same like 1. (for completeness)
+                # 4. EHOSTDOWN (112), EHOSTUNREACH (113): while network and/or DNS-server is not reachable
+                #
+                # no reconnection as error is not 1.-4.
+                self.close()
             raise TransportInitError(str(e)) #re-raise i/o error
                 
     def _validate_header(self, header):
@@ -605,11 +613,29 @@ class TCPROSTransport(Transport):
             return
         fileno = sock.fileno()
         ready = None
-        while not ready:
-            _, ready, _ = select.select([], [fileno], [])
+        poller = None
+        if hasattr(select, 'poll'):
+            poller = select.poll()
+            poller.register(fileno, select.POLLOUT)
+            while not ready:
+                events = poller.poll()
+                for _, flag in events:
+                  if flag & select.POLLOUT:
+                        ready = True
+        else:
+            while not ready:
+                try:
+                    _, ready, _ = select.select([], [fileno], [])
+                except ValueError as e:
+                    logger.error("[%s]: select fileno '%s': %s", self.name, str(fileno), str(e))
+                    raise
+
         logger.debug("[%s]: writing header", self.name)
         sock.setblocking(1)
         self.stat_bytes += write_ros_handshake_header(sock, protocol.get_header_fields())
+        if poller:
+            poller.unregister(fileno)
+
 
     def read_header(self):
         """
@@ -704,7 +730,7 @@ class TCPROSTransport(Transport):
             self.stat_num_msg += len(msg_queue) #STATS
             # set the _connection_header field
             for m in msg_queue:
-                setattr(m.__class__, '_connection_header', self.header)
+                m._connection_header = self.header
                 
             # #1852: keep track of last latched message
             if self.is_latched and msg_queue:
@@ -742,8 +768,8 @@ class TCPROSTransport(Transport):
             except TransportInitError:
                 self.socket = None
                 
-            if self.socket is None:
-                # exponential backoff
+            if self.socket is None and interval < 30.:
+                # exponential backoff (maximum 32 seconds)
                 interval = interval * 2
                 
             time.sleep(interval)

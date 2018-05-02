@@ -47,6 +47,7 @@ The structure of the serialization descends several levels of serializers:
 
 from __future__ import print_function
 
+import errno
 import os
 import keyword
 import itertools
@@ -143,7 +144,6 @@ def default_value(msg_context, field_type, default_package):
     elif field_type in ['float32', 'float64']:
         return '0.'
     elif field_type == 'string':
-        # strings, char[], and uint8s are all optimized to be strings
         return "''"
     elif field_type == 'bool':
         return 'False'
@@ -152,14 +152,22 @@ def default_value(msg_context, field_type, default_package):
         if base_type in ['char', 'uint8']:
             # strings, char[], and uint8s are all optimized to be strings
             if array_len is not None:
-                return "chr(0)*%s"%array_len
+                return r"b'\0'*%s"%array_len
             else:
-                return "''"
+                return "b''"
         elif array_len is None: #var-length
             return '[]'
-        else: # fixed-length, fill values
+        else:
+            # fixed-length
             def_val = default_value(msg_context, base_type, default_package)
-            return '[' + ','.join(itertools.repeat(def_val, array_len)) + ']'
+            if base_type in [
+                'byte', 'int8', 'int16', 'int32', 'int64', 'uint16', 'uint32',
+                'uint64', 'float32', 'float64', 'string', 'bool'
+            ]:  # fill primitive values
+                return '[' + def_val + '] * ' + str(array_len)
+            else:  # fill values with distinct instances
+                def_val = default_value(msg_context, base_type, default_package)
+                return '[' + def_val + ' for _ in range(' + str(array_len) + ')]'
     else:
         return compute_constructor(msg_context, default_package, field_type)
 
@@ -429,10 +437,7 @@ def string_serializer_generator(package, type_, name, serialize):
             yield INDENT+"%s = %s.encode('utf-8')"%(var,var) #For unicode-strings in Python2, encode using utf-8
             yield INDENT+"length = len(%s)"%(var) # Update the length after utf-8 conversion
 
-            yield "if python3:"
-            yield INDENT+pack2("'<I%sB'%length", "length, *%s"%var)
-            yield "else:"
-            yield INDENT+pack2("'<I%ss'%length", "length, %s"%var)
+            yield pack2("'<I%ss'%length", "length, %s"%var)
     else:
         yield "start = end"
         if array_len is not None:
@@ -527,7 +532,7 @@ def array_serializer_generator(msg_context, package, type_, name, serialize, is_
             factory = string_serializer_generator(package, base_type, loop_var, serialize)
         else:
             push_context('%s.'%loop_var)
-            factory = serializer_generator(msg_context, get_registered_ex(msg_context, base_type), serialize, is_numpy)
+            factory = serializer_generator(msg_context, make_python_safe(get_registered_ex(msg_context, base_type)), serialize, is_numpy)
 
         if serialize:
             yield 'for %s in %s:'%(loop_var, var)
@@ -582,7 +587,7 @@ def complex_serializer_generator(msg_context, package, type_, name, serialize, i
             push_context(ctx_var+'.')
             # unoptimized code
             #push_context(_serial_context+name+'.')
-            for y in serializer_generator(msg_context, get_registered_ex(msg_context, type_), serialize, is_numpy):
+            for y in serializer_generator(msg_context, make_python_safe(get_registered_ex(msg_context, type_)), serialize, is_numpy):
                 yield y #recurs on subtype
             pop_context()
         else:
@@ -879,13 +884,21 @@ def msg_generator(msg_context, spec, search_path):
     # #1807 : this will be much cleaner when msggenerator library is
     # rewritten to not use globals
     yield '_struct_I = genpy.struct_I'
+    yield 'def _get_struct_I():'
+    yield '    global _struct_I'
+    yield '    return _struct_I'
     patterns = get_patterns()
     for p in set(patterns):
         # I patterns are already optimized
         if p == 'I':
             continue
         var_name = '_struct_%s'%(p.replace('<',''))
-        yield '%s = struct.Struct("<%s")'%(var_name, p)
+        yield '%s = None' % var_name
+        yield 'def _get%s():' % var_name
+        yield '    global %s' % var_name
+        yield '    if %s is None:' % var_name
+        yield '        %s = struct.Struct("<%s")' % (var_name, p)
+        yield '    return %s' % var_name
     clear_patterns()
 
 def srv_generator(msg_context, spec, search_path):
@@ -945,7 +958,7 @@ class Generator(object):
             # you can't just check first... race condition
             os.makedirs(outdir)
         except OSError as e:
-            if e.errno != 17: # file exists
+            if e.errno != errno.EEXIST:
                 raise
         # generate message files for request/response
         spec = self.spec_loader_fn(msg_context, f, full_type)

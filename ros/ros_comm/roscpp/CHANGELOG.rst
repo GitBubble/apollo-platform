@@ -2,18 +2,77 @@
 Changelog for package roscpp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.11.21 (2017-03-06)
+1.12.13 (2018-02-21)
 --------------------
+* avoid recreating poll set (`#1281 <https://github.com/ros/ros_comm/pull/1281>`_)
+* switch to using epoll (`#1217 <https://github.com/ros/ros_comm/pull/1217>`_)
+* monotonic clock for callback queue timeouts (`#1250 <https://github.com/ros/ros_comm/pull/1250>`_)
+* fix IPv6 initialization order (`#1262 <https://github.com/ros/ros_comm/issues/1262>`_)
+* changed error message for single threaded spinner  (`#1164 <https://github.com/ros/ros_comm/pull/1164>`_)
+
+1.12.12 (2017-11-16)
+--------------------
+
+1.12.11 (2017-11-07)
+--------------------
+
+1.12.10 (2017-11-06)
+--------------------
+
+1.12.9 (2017-11-06)
+-------------------
+
+1.12.8 (2017-11-06)
+-------------------
+* check if socket options are available before using them (`#1172 <https://github.com/ros/ros_comm/issues/1172>`_)
+* only use CLOCK_MONOTONIC if not on OS X (`#1142 <https://github.com/ros/ros_comm/issues/1142>`_)
+* xmlrpc_manager: use SteadyTime for timeout (`#1134 <https://github.com/ros/ros_comm/issues/1134>`_)
+* ignore headers with zero stamp in statistics (`#1127 <https://github.com/ros/ros_comm/issues/1127>`_)
+* add SteadyTimer, used in TimerManager (`#1014 <https://github.com/ros/ros_comm/issues/1014>`_)
+* include missing header for writev() (`#1105 <https://github.com/ros/ros_comm/pull/1105>`_)
+* add missing mutex lock for publisher links (`#1090 <https://github.com/ros/ros_comm/pull/1090>`_)
+* fix race condition that lead to miss first message (`#1058 <https://github.com/ros/ros_comm/issues/1058>`_)
+* fix bug in transport_tcp on Windows (`#1050 <https://github.com/ros/ros_comm/issues/1050>`_)
+* add subscriber to connection log messages (`#1023 <https://github.com/ros/ros_comm/issues/1023>`_)
+* avoid deleting XmlRpcClient while being used in another thread (`#1013 <https://github.com/ros/ros_comm/issues/1013>`_)
+
+1.12.7 (2017-02-17)
+-------------------
+* move connection specific log message to new name roscpp_internal.connections (`#980 <https://github.com/ros/ros_comm/pull/980>`_)
+* move headers to include/xmlrpcpp (`#962 <https://github.com/ros/ros_comm/issues/962>`_)
 * fix UDP block number when EAGAIN or EWOULDBLOCK (`#957 <https://github.com/ros/ros_comm/issues/957>`_)
+* fix return code of master execute function (`#938 <https://github.com/ros/ros_comm/pull/938>`_)
+* change WallTimerEvent from class to struct (`#924 <https://github.com/ros/ros_comm/pull/924>`_)
+
+1.12.6 (2016-10-26)
+-------------------
+
+1.12.5 (2016-09-30)
+-------------------
+
+1.12.4 (2016-09-19)
+-------------------
+
+1.12.3 (2016-09-17)
+-------------------
+* fix multi-threaded spinning (`#867 <https://github.com/ros/ros_comm/pull/867>`_)
+* fix static destruction order (`#871 <https://github.com/ros/ros_comm/pull/871>`_)
+* throw exception on ros::init with empty node name (`#894 <https://github.com/ros/ros_comm/pull/894>`_)
+* improve debug message when queue is full (`#818 <https://github.com/ros/ros_comm/issues/818>`_)
+
+1.12.2 (2016-06-03)
+-------------------
 * improve stacktrace for exceptions thrown in callbacks (`#811 <https://github.com/ros/ros_comm/pull/811>`_)
+* fix segfault if creating outgoing UDP transport fails (`#807 <https://github.com/ros/ros_comm/pull/807>`_)
 
-1.11.20 (2016-06-27)
---------------------
-* fix segfault if connection fails (`#807 <https://github.com/ros/ros_comm/pull/807>`_)
-
-1.11.19 (2016-04-18)
---------------------
+1.12.1 (2016-04-18)
+-------------------
 * use directory specific compiler flags (`#785 <https://github.com/ros/ros_comm/pull/785>`_)
+
+1.12.0 (2016-03-18)
+-------------------
+* improve TopicManager::instance (`#770 <https://github.com/ros/ros_comm/issues/770>`_)
+* change return value of param() to bool (`#753 <https://github.com/ros/ros_comm/issues/753>`_)
 
 1.11.18 (2016-03-17)
 --------------------

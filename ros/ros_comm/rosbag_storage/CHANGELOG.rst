@@ -2,15 +2,63 @@
 Changelog for package rosbag_storage
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.11.21 (2017-03-06)
+1.12.13 (2018-02-21)
+--------------------
+* performance improvement for lower/upper bound (`#1223 <https://github.com/ros/ros_comm/issues/1223>`_)
+* place console_bridge macros definition in header and use it everywhere console_bridge is included (`#1238 <https://github.com/ros/ros_comm/issues/1238>`_)
+
+1.12.12 (2017-11-16)
+--------------------
+* backward compatibility with libconsole-bridge in Jessie (take 3) (`#1235 <https://github.com/ros/ros_comm/issues/1235>`_)
+
+1.12.11 (2017-11-07)
 --------------------
 
-1.11.20 (2016-06-27)
+1.12.10 (2017-11-06)
 --------------------
+* fix compatibility with libconsole-bridge in Jessie, take 2
 
-1.11.19 (2016-04-18)
---------------------
+1.12.9 (2017-11-06)
+-------------------
+* fix compatibility with libconsole-bridge in Jessie (`#1219 <https://github.com/ros/ros_comm/issues/1219>`_, regression from 1.12.8)
+
+1.12.8 (2017-11-06)
+-------------------
+* check if bzfile\_ and lz4s\_ handle is valid before reading/writing/closing (`#1183 <https://github.com/ros/ros_comm/issues/1183>`_)
+* fix an out of bounds read in rosbag::View::iterator::increment() (`#1191 <https://github.com/ros/ros_comm/issues/1191>`_)
+* replace usage deprecated console_bridge macros (`#1149 <https://github.com/ros/ros_comm/issues/1149>`_)
+* fix whitespace warnings with g++ 7 (`#1138 <https://github.com/ros/ros_comm/issues/1138>`_)
+* remove deprecated dynamic exception specifications (`#1137 <https://github.com/ros/ros_comm/issues/1137>`_)
+* fix buffer overflow vulnerability (`#1092 <https://github.com/ros/ros_comm/issues/1092>`_)
+* fix rosbag::View::iterator copy assignment operator (`#1017 <https://github.com/ros/ros_comm/issues/1017>`_)
+* fix open mode on Windows (`#1005 <https://github.com/ros/ros_comm/pull/1005>`_)
+* add swap function instead of copy constructor / assignment operator for rosbag::Bag (`#1000 <https://github.com/ros/ros_comm/issues/1000>`_)
+
+1.12.7 (2017-02-17)
+-------------------
+
+1.12.6 (2016-10-26)
+-------------------
+
+1.12.5 (2016-09-30)
+-------------------
+
+1.12.4 (2016-09-19)
+-------------------
+
+1.12.3 (2016-09-17)
+-------------------
+* make Bag constructor explicit (`#835 <https://github.com/ros/ros_comm/pull/835>`_)
+
+1.12.2 (2016-06-03)
+-------------------
+
+1.12.1 (2016-04-18)
+-------------------
 * use directory specific compiler flags (`#785 <https://github.com/ros/ros_comm/pull/785>`_)
+
+1.12.0 (2016-03-18)
+-------------------
 
 1.11.18 (2016-03-17)
 --------------------

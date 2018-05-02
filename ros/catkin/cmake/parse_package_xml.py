@@ -67,6 +67,10 @@ def _get_output(package):
     values.update(_get_dependency_values('TEST_DEPENDS', package.test_depends))
     values.update(_get_dependency_values('DOC_DEPENDS', package.doc_depends))
 
+    for url_type in ['website', 'bugtracker', 'repository']:
+        values['URL_%s' % url_type.upper()] = '"%s"' % (', '.join(
+            [str(u) for u in package.urls if u.type == url_type]))
+
     deprecated = [e.content for e in package.exports if e.tagname == 'deprecated']
     values['DEPRECATED'] = '"%s"' % ((deprecated[0] if deprecated[0] else 'TRUE') if deprecated else '')
 
@@ -98,8 +102,14 @@ def main(argv=sys.argv[1:]):
     args = parser.parse_args(argv)
     package = parse_package(args.package_xml)
 
+    # Force utf8 encoding for python3.
+    # This way unicode files can still be processed on non-unicode locales.
+    kwargs = {}
+    if sys.version_info.major >= 3:
+        kwargs['encoding'] = 'utf8'
+
     lines = _get_output(package)
-    with open(args.outfile, 'w') as ofile:
+    with open(args.outfile, 'w', **kwargs) as ofile:
         ofile.write('\n'.join(lines))
 
 

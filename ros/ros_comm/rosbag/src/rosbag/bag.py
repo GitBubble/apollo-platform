@@ -49,7 +49,6 @@ import sys
 import threading
 import time
 import yaml
-import google.protobuf
 
 try:
     from cStringIO import StringIO  # Python 2.x
@@ -62,7 +61,6 @@ import genpy.dynamic
 import genpy.message
 
 import roslib.names # still needed for roslib.names.canonicalize_name()
-import roslib.message
 import rospy
 try:
     import roslz4
@@ -348,11 +346,7 @@ class Bag(object):
             
                 header = { 'topic' : topic, 'type' : msg_type, 'md5sum' : md5sum, 'message_definition' : pytype._full_text }
             else:
-                if issubclass(msg.__class__, google.protobuf.message.Message):
-                    roslib.message.add_rosmsg_interface_for_protobuf(msg.__class__)
-                    header = { 'topic' : topic, 'type' : msg.__class__._type, 'md5sum' : msg.__class__._md5sum, 'message_definition' : 'protobuf' }
-                else:
-                    header = { 'topic' : topic, 'type' : msg.__class__._type, 'md5sum' : msg.__class__._md5sum, 'message_definition' : msg._full_text }
+                header = { 'topic' : topic, 'type' : msg.__class__._type, 'md5sum' : msg.__class__._md5sum, 'message_definition' : msg._full_text }
 
             connection_info = _ConnectionInfo(conn_id, topic, header)
 
@@ -502,7 +496,8 @@ class Bag(object):
         else:
             if not self._connection_indexes:
                 raise ROSBagException('Bag contains no message')
-            start_stamp = min([index[0].time.to_sec() for index in self._connection_indexes.values()])
+            start_stamps = [index[0].time.to_sec() for index in self._connection_indexes.values() if index]
+            start_stamp = min(start_stamps) if start_stamps else 0
         
         return start_stamp
     
@@ -518,7 +513,8 @@ class Bag(object):
         else:
             if not self._connection_indexes:
                 raise ROSBagException('Bag contains no message')
-            end_stamp = max([index[-1].time.to_sec() for index in self._connection_indexes.values()])
+            end_stamps = [index[-1].time.to_sec() for index in self._connection_indexes.values() if index]
+            end_stamp = max(end_stamps) if end_stamps else 0
         
         return end_stamp
     
@@ -631,8 +627,10 @@ class Bag(object):
                     start_stamp = self._chunks[ 0].start_time.to_sec()
                     end_stamp   = self._chunks[-1].end_time.to_sec()
                 else:
-                    start_stamp = min([index[ 0].time.to_sec() for index in self._connection_indexes.values()])
-                    end_stamp   = max([index[-1].time.to_sec() for index in self._connection_indexes.values()])
+                    start_stamps = [index[0].time.to_sec() for index in self._connection_indexes.values() if index]
+                    start_stamp = min(start_stamps) if start_stamps else 0
+                    end_stamps = [index[-1].time.to_sec() for index in self._connection_indexes.values() if index]
+                    end_stamp = max(end_stamps) if end_stamps else 0
     
                 # Show duration
                 duration = end_stamp - start_stamp
@@ -814,8 +812,10 @@ class Bag(object):
                     start_stamp = self._chunks[ 0].start_time.to_sec()
                     end_stamp   = self._chunks[-1].end_time.to_sec()
                 else:
-                    start_stamp = min([index[ 0].time.to_sec() for index in self._connection_indexes.values()])
-                    end_stamp   = max([index[-1].time.to_sec() for index in self._connection_indexes.values()])
+                    start_stamps = [index[0].time.to_sec() for index in self._connection_indexes.values() if index]
+                    start_stamp = min(start_stamps) if start_stamps else 0
+                    end_stamps = [index[-1].time.to_sec() for index in self._connection_indexes.values() if index]
+                    end_stamp = max(end_stamps) if end_stamps else 0
                 
                 duration = end_stamp - start_stamp
                 s += 'duration: %.6f\n' % duration
@@ -1568,12 +1568,7 @@ def _get_message_type(info):
     message_type = _message_types.get(info.md5sum)
     if message_type is None:
         try:
-            if info.msg_def == 'protobuf':
-                obj = __import__('pb_msgs.msg')
-                message_type = getattr(obj.msg, info.datatype.split('/')[1])
-                roslib.message.add_rosmsg_interface_for_protobuf(message_type)
-            else:
-                message_type = genpy.dynamic.generate_dynamic(info.datatype, info.msg_def)[info.datatype]
+            message_type = genpy.dynamic.generate_dynamic(info.datatype, info.msg_def)[info.datatype]
             if (message_type._md5sum != info.md5sum):
                 print('WARNING: For type [%s] stored md5sum [%s] does not match message definition [%s].\n  Try: "rosrun rosbag fix_msg_defs.py old_bag new_bag."'%(info.datatype, info.md5sum, message_type._md5sum), file=sys.stderr)
         except genmsg.InvalidMsgSpec:
@@ -1591,6 +1586,7 @@ def _read_uint32(f): return _unpack_uint32(f.read(4))
 def _read_uint64(f): return _unpack_uint64(f.read(8))
 def _read_time  (f): return _unpack_time  (f.read(8))
 
+def _decode_str(v):    return v if type(v) is str else v.decode()
 def _unpack_uint8(v):  return struct.unpack('<B', v)[0]
 def _unpack_uint32(v): return struct.unpack('<L', v)[0]
 def _unpack_uint64(v): return struct.unpack('<Q', v)[0]
@@ -1639,8 +1635,7 @@ def _read_field(header, field, unpack_fn):
     
     return value
 
-def _read_str_field   (header, field):
-    return _read_field(header, field, lambda v: v)
+def _read_str_field   (header, field): return _read_field(header, field, _decode_str)
 def _read_uint8_field (header, field): return _read_field(header, field, _unpack_uint8)
 def _read_uint32_field(header, field): return _read_field(header, field, _unpack_uint32)
 def _read_uint64_field(header, field): return _read_field(header, field, _unpack_uint64)

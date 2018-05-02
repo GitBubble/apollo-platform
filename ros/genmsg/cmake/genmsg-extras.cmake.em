@@ -187,67 +187,6 @@ macro(add_service_files)
   endif()
 endmacro()
 
-macro(add_proto_files)
-  cmake_parse_arguments(ARG "NOINSTALL" "DIRECTORY;BASE_DIR" "FILES" ${ARGN})
-  if(ARG_UNPARSED_ARGUMENTS)
-    message(FATAL_ERROR "add_proto_files() called with unused arguments: ${ARG_UNPARSED_ARGUMENTS}")
-  endif()
-
-  if(NOT ARG_DIRECTORY)
-    set(ARG_DIRECTORY "proto")
-  endif()
-
-  set(PROTO_DIR "${ARG_DIRECTORY}")
-  if(NOT IS_ABSOLUTE "${PROTO_DIR}")
-    set(PROTO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${PROTO_DIR}")
-  endif()
-  # override message directory (used by add_action_files())
-  if(ARG_BASE_DIR)
-    set(MESSAGE_DIR ${ARG_BASE_DIR})
-  endif()
-
-  if(NOT IS_DIRECTORY ${PROTO_DIR})
-    message(FATAL_ERROR "add_proto_files() directory not found: ${PROTO_DIR}")
-  endif()
-  
-  if(${PROJECT_NAME}_GENERATE_PROTO_MESSAGES)
-    message(FATAL_ERROR "generate_proto_messages() must be called after add_message_files()")
-  endif()
-
-  # if FILES are not passed search message files in the given directory
-  # note: ARGV is not variable, so it can not be passed to list(FIND) directly
-  set(_argv ${ARGV})
-  list(FIND _argv "FILES" _index)
-  if(_index EQUAL -1)
-    file(GLOB ARG_FILES RELATIVE "${PROTO_DIR}" "${PROTO_DIR}/*.proto")
-    list(SORT ARG_FILES)
-  endif()
-  _prepend_path(${PROTO_DIR} "${ARG_FILES}" FILES_W_PATH)
-
-  list(APPEND ${PROJECT_NAME}_PROTO_FILES ${FILES_W_PATH})
-  foreach(file ${FILES_W_PATH})
-    assert_file_exists(${file} "proto file not found")
-  endforeach()
-
-  # remember path to messages to resolve them as dependencies
-  list(FIND ${PROJECT_NAME}_PROTO_INCLUDE_DIRS_DEVELSPACE ${PROTO_DIR} _index)
-  if(_index EQUAL -1)
-    list(APPEND ${PROJECT_NAME}_PROTO_INCLUDE_DIRS_DEVELSPACE ${PROTO_DIR})
-  endif() 
-
-  if(NOT ARG_NOINSTALL)
-    # ensure that destination variables are initialized
-    catkin_destinations()
-
-    list(APPEND ${PROJECT_NAME}_PROTO_INCLUDE_DIRS_INSTALLSPACE ${ARG_DIRECTORY})
-    install(FILES ${FILES_W_PATH}
-    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/${ARG_DIRECTORY})
-
-    _prepend_path("${ARG_DIRECTORY}" "${ARG_FILES}" FILES_W_PATH)
-    list(APPEND ${PROJECT_NAME}_INSTALLED_PROTO_FILES ${FILES_W_PATH})
-  endif()
-endmacro()
-
 macro(generate_messages)
   cmake_parse_arguments(ARG "" "" "DEPENDENCIES;LANGS" ${ARGN})
 
@@ -265,7 +204,6 @@ macro(generate_messages)
 
   set(ARG_MESSAGES ${${PROJECT_NAME}_MESSAGE_FILES})
   set(ARG_SERVICES ${${PROJECT_NAME}_SERVICE_FILES})
-  set(ARG_PROTOS ${${PROJECT_NAME}_PROTO_FILES})
   set(ARG_DEPENDENCIES ${ARG_DEPENDENCIES})
 
   if(ARG_LANGS)
@@ -287,14 +225,12 @@ macro(generate_messages)
 
   # generate devel space config of message include dirs for project
   set(PKG_MSG_INCLUDE_DIRS "${${PROJECT_NAME}_MSG_INCLUDE_DIRS_DEVELSPACE}")
-  set(PKG_PROTO_INCLUDE_DIRS "${${PROJECT_NAME}_PROTO_INCLUDE_DIRS_DEVELSPACE}")
   configure_file(
     ${genmsg_CMAKE_DIR}/pkg-msg-paths.cmake.develspace.in
     ${CATKIN_DEVEL_PREFIX}/share/${PROJECT_NAME}/cmake/${PROJECT_NAME}-msg-paths.cmake
     @@ONLY)
   # generate and install config of message include dirs for project
   set(PKG_MSG_INCLUDE_DIRS "${${PROJECT_NAME}_MSG_INCLUDE_DIRS_INSTALLSPACE}")
-  set(PKG_PROTO_INCLUDE_DIRS "${${PROJECT_NAME}_PROTO_INCLUDE_DIRS_INSTALLSPACE}")
   configure_file(
     ${genmsg_CMAKE_DIR}/pkg-msg-paths.cmake.installspace.in
     ${CMAKE_CURRENT_BINARY_DIR}/catkin_generated/installspace/${PROJECT_NAME}-msg-paths.cmake
@@ -305,7 +241,6 @@ macro(generate_messages)
   # generate devel space pkg config extra defining variables with all processed message and service files
   set(PKG_MSG_FILES "${${PROJECT_NAME}_MESSAGE_FILES}")
   set(PKG_SRV_FILES "${${PROJECT_NAME}_SERVICE_FILES}")
-  set(PKG_PROTO_FILES "${${PROJECT_NAME}_PROTO_FILES}")
   configure_file(
     ${genmsg_CMAKE_DIR}/pkg-msg-extras.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/catkin_generated/${PROJECT_NAME}-msg-extras.cmake.develspace.in
@@ -313,7 +248,6 @@ macro(generate_messages)
   # generate install space pkg config extra defining variables with all processed and installed message and service files
   set(PKG_MSG_FILES "${${PROJECT_NAME}_INSTALLED_MESSAGE_FILES}")
   set(PKG_SRV_FILES "${${PROJECT_NAME}_INSTALLED_SERVICE_FILES}")
-  set(PKG_PROTO_FILES "${${PROJECT_NAME}_INSTALLED_PROTO_FILES}")
   configure_file(
     ${genmsg_CMAKE_DIR}/pkg-msg-extras.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/catkin_generated/${PROJECT_NAME}-msg-extras.cmake.installspace.in
@@ -352,16 +286,10 @@ macro(generate_messages)
     # explicitly set message include dirs for current project since information from pkg-msg-paths.cmake is not yet available
     if(${dep} STREQUAL ${PROJECT_NAME})
       set(${dep}_MSG_INCLUDE_DIRS ${${PROJECT_NAME}_MSG_INCLUDE_DIRS_DEVELSPACE})
-      set(${dep}_PROTO_INCLUDE_DIRS ${${PROJECT_NAME}_PROTO_INCLUDE_DIRS_DEVELSPACE})
     endif()
-
     foreach(path ${${dep}_MSG_INCLUDE_DIRS})
       list(APPEND MSG_INCLUDE_DIRS "${dep}")
       list(APPEND MSG_INCLUDE_DIRS "${path}")
-    endforeach()
-
-    foreach(path ${${dep}_PROTO_INCLUDE_DIRS})
-      list(APPEND PROTO_INCLUDE_DIRS "${path}")
     endforeach()
 
     # add transitive msg dependencies

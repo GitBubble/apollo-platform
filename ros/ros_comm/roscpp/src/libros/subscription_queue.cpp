@@ -30,12 +30,6 @@
 #include "ros/message_deserializer.h"
 #include "ros/subscription_callback_helper.h"
 
-#include "roscpp/SharedMemoryHeader.h"
-#include "boost/bind.hpp"
-#include "ros/names.h"
-#include <thread>
-#include "ros/config_comm.h"
-
 namespace ros
 {
 
@@ -45,18 +39,16 @@ SubscriptionQueue::SubscriptionQueue(const std::string& topic, int32_t queue_siz
 , full_(false)
 , queue_size_(0)
 , allow_concurrent_callbacks_(allow_concurrent_callbacks)
-, first_run_(true)
-, internal_cb_runnning_(false)
-, last_read_index_(-1)
 {}
 
 SubscriptionQueue::~SubscriptionQueue()
 {
+
 }
 
-void SubscriptionQueue::push(bool default_transport, const SubscriptionCallbackHelperPtr& helper, const MessageDeserializerPtr& deserializer,
-                             bool has_tracked_object, const VoidConstWPtr& tracked_object, bool nonconst_need_copy,
-                             ros::Time receipt_time, bool* was_full)
+void SubscriptionQueue::push(const SubscriptionCallbackHelperPtr& helper, const MessageDeserializerPtr& deserializer,
+                                 bool has_tracked_object, const VoidConstWPtr& tracked_object, bool nonconst_need_copy,
+                                 ros::Time receipt_time, bool* was_full)
 {
   boost::mutex::scoped_lock lock(queue_mutex_);
 
@@ -72,7 +64,7 @@ void SubscriptionQueue::push(bool default_transport, const SubscriptionCallbackH
 
     if (!full_)
     {
-      ROS_DEBUG("Incoming queue full for topic \"%s\".  Discarding oldest message (current queue size [%d])", topic_.c_str(), (int)queue_.size());
+      ROS_DEBUG("Incoming queue was full for topic \"%s\". Discarded oldest message (current queue size [%d])", topic_.c_str(), (int)queue_.size());
     }
 
     full_ = true;
@@ -88,7 +80,6 @@ void SubscriptionQueue::push(bool default_transport, const SubscriptionCallbackH
   }
 
   Item i;
-  i.default_transport = default_transport;
   i.helper = helper;
   i.deserializer = deserializer;
   i.has_tracked_object = has_tracked_object;

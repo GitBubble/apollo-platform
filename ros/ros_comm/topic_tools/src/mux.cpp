@@ -119,7 +119,7 @@ bool sel_srv_cb( topic_tools::MuxSelect::Request  &req,
         ROS_INFO("mux selected input: [%s]", it->topic_name.c_str());
         ret = true;
         
-        if (!g_selected->sub && (!g_advertised || g_pub.getNumSubscribers())) {
+        if (!g_selected->sub && (!g_advertised || (g_advertised && g_pub.getNumSubscribers()))) {
           g_selected->sub = new ros::Subscriber(g_node->subscribe<ShapeShifter>(g_selected->topic_name, 10, boost::bind(in_cb, _1, g_selected->msg)));
         }
       }

@@ -46,10 +46,8 @@
 #include "ros/header.h"
 #include "ros/time.h"
 #include "ros/message_traits.h"
-#include "ros/protobuffer_traits.h"
 #include "ros/message_event.h"
 #include "ros/serialization.h"
-#include "ros/serialization_protobuffer.h"
 
 //#include "ros/subscription_callback_helper.h"
 
@@ -63,6 +61,9 @@
 #include <boost/iterator/iterator_facade.hpp>
 
 #include "console_bridge/console.h"
+// Remove this include when no longer supporting platforms with libconsole-bridge-dev < 0.3.0,
+// in particular Debian Jessie: https://packages.debian.org/jessie/libconsole-bridge-dev
+#include "rosbag/console_bridge_compatibility.h"
 
 namespace rosbag {
 
@@ -97,7 +98,7 @@ public:
      *
      * Can throw BagException
      */
-    Bag(std::string const& filename, uint32_t mode = bagmode::Read);
+    explicit Bag(std::string const& filename, uint32_t mode = bagmode::Read);
 
     ~Bag();
 
@@ -132,8 +133,7 @@ public:
      * Can throw BagIOException
      */
     template<class T>
-    void write(std::string const& topic, ros::MessageEvent<T> const& event, 
-               std::string datatype = "", std::string md5sum = "", std::string msg_def = "");
+    void write(std::string const& topic, ros::MessageEvent<T> const& event);
 
     //! Write a message into the bag file
     /*!
@@ -146,8 +146,7 @@ public:
      */
     template<class T>
     void write(std::string const& topic, ros::Time const& time, T const& msg,
-               boost::shared_ptr<ros::M_string> connection_header = boost::shared_ptr<ros::M_string>(), 
-               std::string datatype = "", std::string md5sum = "", std::string msg_def = "");
+               boost::shared_ptr<ros::M_string> connection_header = boost::shared_ptr<ros::M_string>());
 
     //! Write a message into the bag file
     /*!
@@ -160,8 +159,7 @@ public:
      */
     template<class T>
     void write(std::string const& topic, ros::Time const& time, boost::shared_ptr<T const> const& msg,
-               boost::shared_ptr<ros::M_string> connection_header = boost::shared_ptr<ros::M_string>(), 
-               std::string datatype = "", std::string md5sum = "", std::string msg_def = "");
+               boost::shared_ptr<ros::M_string> connection_header = boost::shared_ptr<ros::M_string>());
 
     //! Write a message into the bag file
     /*!
@@ -174,14 +172,17 @@ public:
      */
     template<class T>
     void write(std::string const& topic, ros::Time const& time, boost::shared_ptr<T> const& msg,
-               boost::shared_ptr<ros::M_string> connection_header = boost::shared_ptr<ros::M_string>(), 
-               std::string datatype = "", std::string md5sum = "", std::string msg_def = "");
+               boost::shared_ptr<ros::M_string> connection_header = boost::shared_ptr<ros::M_string>());
+
+    void swap(Bag&);
 
 private:
+    Bag(const Bag&);
+    Bag& operator=(const Bag&);
+
     // This helper function actually does the write with an arbitrary serializable message
     template<class T>
-    void doWrite(std::string const& topic, ros::Time const& time, T const& msg, boost::shared_ptr<ros::M_string> const& connection_header, 
-        std::string datatype = "", std::string md5sum = "", std::string msg_def = "");
+    void doWrite(std::string const& topic, ros::Time const& time, T const& msg, boost::shared_ptr<ros::M_string> const& connection_header);
 
     void openRead  (std::string const& filename);
     void openWrite (std::string const& filename);
@@ -326,26 +327,22 @@ namespace rosbag {
 // Templated method definitions
 
 template<class T>
-void Bag::write(std::string const& topic, ros::MessageEvent<T> const& event, 
-    std::string datatype, std::string md5sum, std::string msg_def) {
+void Bag::write(std::string const& topic, ros::MessageEvent<T> const& event) {
     doWrite(topic, event.getReceiptTime(), *event.getMessage(), event.getConnectionHeaderPtr());
 }
 
 template<class T>
-void Bag::write(std::string const& topic, ros::Time const& time, T const& msg, boost::shared_ptr<ros::M_string> connection_header, 
-    std::string datatype, std::string md5sum, std::string msg_def) {
-    doWrite(topic, time, msg, connection_header, datatype, md5sum, msg_def);
+void Bag::write(std::string const& topic, ros::Time const& time, T const& msg, boost::shared_ptr<ros::M_string> connection_header) {
+    doWrite(topic, time, msg, connection_header);
 }
 
 template<class T>
-void Bag::write(std::string const& topic, ros::Time const& time, boost::shared_ptr<T const> const& msg, boost::shared_ptr<ros::M_string> connection_header, 
-    std::string datatype, std::string md5sum, std::string msg_def) {
+void Bag::write(std::string const& topic, ros::Time const& time, boost::shared_ptr<T const> const& msg, boost::shared_ptr<ros::M_string> connection_header) {
     doWrite(topic, time, *msg, connection_header);
 }
 
 template<class T>
-void Bag::write(std::string const& topic, ros::Time const& time, boost::shared_ptr<T> const& msg, boost::shared_ptr<ros::M_string> connection_header, 
-    std::string datatype, std::string md5sum, std::string msg_def) {
+void Bag::write(std::string const& topic, ros::Time const& time, boost::shared_ptr<T> const& msg, boost::shared_ptr<ros::M_string> connection_header) {
     doWrite(topic, time, *msg, connection_header);
 }
 
@@ -477,9 +474,7 @@ boost::shared_ptr<T> Bag::instantiateBuffer(IndexEntry const& index_entry) const
 }
 
 template<class T>
-void Bag::doWrite(std::string const& topic, ros::Time const& time, 
-    T const& msg, boost::shared_ptr<ros::M_string> const& connection_header, 
-    std::string datatype, std::string md5sum, std::string msg_def) {
+void Bag::doWrite(std::string const& topic, ros::Time const& time, T const& msg, boost::shared_ptr<ros::M_string> const& connection_header) {
 
     if (time < ros::TIME_MIN)
     {
@@ -540,38 +535,24 @@ void Bag::doWrite(std::string const& topic, ros::Time const& time,
             connection_info = new ConnectionInfo();
             connection_info->id       = conn_id;
             connection_info->topic    = topic;
-            if (std::string(ros::message_traits::datatype(msg)) == "*") {
-                connection_info->datatype = datatype;
-                connection_info->md5sum   = md5sum;
-                connection_info->msg_def  = msg_def;
-            }
-            else {
-                connection_info->datatype = std::string(ros::message_traits::datatype(msg));
-                connection_info->md5sum   = std::string(ros::message_traits::md5sum(msg));
-                connection_info->msg_def  = std::string(ros::message_traits::definition(msg));
-            }
+            connection_info->datatype = std::string(ros::message_traits::datatype(msg));
+            connection_info->md5sum   = std::string(ros::message_traits::md5sum(msg));
+            connection_info->msg_def  = std::string(ros::message_traits::definition(msg));
             if (connection_header != NULL) {
                 connection_info->header = connection_header;
             }
             else {
                 connection_info->header = boost::make_shared<ros::M_string>();
-                if (connection_info->datatype == "*") {
-                    (*connection_info->header)["type"]               = datatype;
-                    (*connection_info->header)["md5sum"]             = md5sum;
-                    (*connection_info->header)["message_definition"] = msg_def;
-                } 
-                else {
-                    (*connection_info->header)["type"]               = connection_info->datatype;
-                    (*connection_info->header)["md5sum"]             = connection_info->md5sum;
-                    (*connection_info->header)["message_definition"] = connection_info->msg_def;
-                }
+                (*connection_info->header)["type"]               = connection_info->datatype;
+                (*connection_info->header)["md5sum"]             = connection_info->md5sum;
+                (*connection_info->header)["message_definition"] = connection_info->msg_def;
             }
             connections_[conn_id] = connection_info;
 
             writeConnectionRecord(connection_info);
             appendConnectionRecordToBuffer(outgoing_chunk_buffer_, connection_info);
-        } 
-        
+        }
+
         // Add to topic indexes
         IndexEntry index_entry;
         index_entry.time      = time;
@@ -591,7 +572,7 @@ void Bag::doWrite(std::string const& topic, ros::Time const& time,
 
         // Check if we want to stop this chunk
         uint32_t chunk_size = getChunkOffset();
-        logDebug("  curr_chunk_size=%d (threshold=%d)", chunk_size, chunk_threshold_);
+        CONSOLE_BRIDGE_logDebug("  curr_chunk_size=%d (threshold=%d)", chunk_size, chunk_threshold_);
         if (chunk_size > chunk_threshold_) {
             // Empty the outgoing chunk
             stopWritingChunk();
@@ -626,7 +607,7 @@ void Bag::writeMessageDataRecord(uint32_t conn_id, ros::Time const& time, T cons
     seek(0, std::ios::end);
     file_size_ = file_.getOffset();
 
-    logDebug("Writing MSG_DATA [%llu:%d]: conn=%d sec=%d nsec=%d data_len=%d",
+    CONSOLE_BRIDGE_logDebug("Writing MSG_DATA [%llu:%d]: conn=%d sec=%d nsec=%d data_len=%d",
               (unsigned long long) file_.getOffset(), getChunkOffset(), conn_id, time.sec, time.nsec, msg_ser_len);
 
     writeHeader(header);
@@ -646,6 +627,10 @@ void Bag::writeMessageDataRecord(uint32_t conn_id, ros::Time const& time, T cons
     	curr_chunk_info_.end_time = time;
     else if (time < curr_chunk_info_.start_time)
         curr_chunk_info_.start_time = time;
+}
+
+inline void swap(Bag& a, Bag& b) {
+    a.swap(b);
 }
 
 } // namespace rosbag

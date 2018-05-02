@@ -52,10 +52,7 @@ from ..names import _set_caller_id
 from ..core import is_shutdown, signal_shutdown, rospyerr
 
 from .tcpros import init_tcpros
-
-from rospy.impl.masterslave import ROSHandler
-from rospy.impl.registration import set_node_handler, set_broadcast_manager, get_broadcast_manager
-from rospy.impl.broadcast_manager import Singleton, BroadcastManager
+from .masterslave import ROSHandler
 
 DEFAULT_NODE_PORT = 0 #bind to any open port
 DEFAULT_MASTER_PORT=11311 #default port for master's to bind to
@@ -96,17 +93,13 @@ def start_node(environ, resolved_name, master_uri=None, port=0, tcpros_port=0):
 
     # this will go away in future versions of API
     _set_caller_id(resolved_name) 
-    handler = ROSHandler(resolved_name, master_uri)
 
+    handler = ROSHandler(resolved_name, master_uri)
     node = rosgraph.xmlrpc.XmlRpcNode(port, handler, on_run_error=_node_run_error)
     node.start()
     while not node.uri and not is_shutdown():
         time.sleep(0.00001) #poll for XMLRPC init
     logging.getLogger("rospy.init").info("ROS Slave URI: [%s]", node.uri)
-
-    set_node_handler(handler)
-    set_broadcast_manager(BroadcastManager()) 
-    get_broadcast_manager().updateHandler()
 
     while not handler._is_registered() and not is_shutdown():
         time.sleep(0.1) #poll for master registration

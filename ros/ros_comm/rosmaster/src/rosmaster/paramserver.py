@@ -34,9 +34,6 @@ from threading import RLock
 
 from rosgraph.names import ns_join, GLOBALNS, SEP, is_global, is_private, canonicalize_name
 
-import os
-import json
-
 def _get_param_names(names, key, d):
     """
     helper recursive routine for getParamNames()
@@ -66,19 +63,6 @@ class ParamDictionary(object):
         self.lock = RLock()
         self.parameters = {}
         self.reg_manager = reg_manager
-        self.snapshot = False
-
-        if "ROS_MASTER_SNAPSHOT" in os.environ:
-            try:
-                self.snapshot = True
-                self.snapshot_file = os.path.join(os.environ["ROS_ROOT"], ".master_snapshot")
-                with open(self.snapshot_file, "r") as f:
-                    self.parameters = json.loads(f.read())
-                del self.parameters["run_id"]
-            except IOError:
-                pass
-            except KeyError:
-                pass
 
     def get_param_names(self):
         """
@@ -229,9 +213,7 @@ class ParamDictionary(object):
                     notify_task(updates)
         finally:
             self.lock.release()
-        if self.snapshot:
-            with open(self.snapshot_file, 'w') as f:
-                f.write(json.dumps(self.parameters))
+
 
     def subscribe_param(self, key, registration_args):
         """

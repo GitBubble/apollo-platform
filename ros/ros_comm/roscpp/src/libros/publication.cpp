@@ -32,9 +32,6 @@
 #include "ros/single_subscriber_publisher.h"
 #include "ros/serialization.h"
 #include <std_msgs/Header.h>
-#include "ros/names.h"
-#include "ros/config_comm.h" 
-#include "ros/param.h" 
 
 namespace ros
 {
@@ -92,7 +89,6 @@ Publication::Publication(const std::string &name,
   dropped_(false),
   latch_(latch),
   has_header_(has_header),
-  self_published_(false),
   intraprocess_subscriber_count_(0)
 {
 }
@@ -186,12 +182,7 @@ bool Publication::enqueueMessage(const SerializedMessage& m)
       i != subscriber_links_.end(); ++i)
   {
     const SubscriberLinkPtr& sub_link = (*i);
-
-    if(sub_link->getDefaultTransport())
-	{
-      sub_link->enqueueMessage(m, true, false);      
-    }
-
+    sub_link->enqueueMessage(m, true, false);
   }
 
   if (latch_)
@@ -201,64 +192,6 @@ bool Publication::enqueueMessage(const SerializedMessage& m)
 
   return true;
 }
-
-void Publication::setSelfPublished(bool self_published)
-{
-  self_published_ = self_published;
-}
-
-bool Publication::getSelfPublished()
-{
-  return self_published_;
-}
-
-TransportType Publication::getSubscriberlinksTransport()
-{
-  boost::mutex::scoped_lock lock(subscriber_links_mutex_);
-
-  uint32_t count = 0 ;
-  bool intraprocess = false;
-  TransportType ret = SHARED_MEMORY ;
-  for (uint32_t i = 0; i< (uint32_t)subscriber_links_.size(); i++ )
-  {
-    if (subscriber_links_[i]->getDefaultTransport())
-    {
-      count ++ ;
-    }
-
-    if (subscriber_links_[i]->isIntraprocess()) 
-    {
-      intraprocess = true;
-    }
-  }
-
-  if (intraprocess || latch_) {
-    for (uint32_t i = 0; i < (uint32_t)subscriber_links_.size(); i++) 
-    {
-      subscriber_links_[i]->setDefaultTransport(true);
-    }  
-    ret = SOCKET;
-    return ret;  
-  }
-
-  if (count == ((uint32_t)subscriber_links_.size()) && count != 0)
-  {
-    ret = SOCKET;
-  }
-  else if (count < ((uint32_t)subscriber_links_.size()) && count != 0)
-  {
-    ret = BOTH;
-  }
-  else
-  {
-    ret = SHARED_MEMORY;
-  }
-
-  return ret ;
-
-}
-
-extern struct ConfigComm g_config_comm;
 
 void Publication::addSubscriberLink(const SubscriberLinkPtr& sub_link)
 {
@@ -278,75 +211,11 @@ void Publication::addSubscriberLink(const SubscriberLinkPtr& sub_link)
     }
   }
 
-  if (sub_link->getRospy())
-  {
-    ROS_DEBUG_STREAM("has rospy sub_link.");
-    sub_link->setDefaultTransport(true);
-  }
-  else if (sub_link->isIntraprocess())
-  {
-    sub_link->setDefaultTransport(true);
-    ROS_DEBUG_STREAM("Publication self_published:" << getName());
-  }
-  else if (latch_)
-  {
-    sub_link->setDefaultTransport(true);
-    ROS_DEBUG_STREAM("Publication topic latched:" << getName());
-  }
-  else if (!g_config_comm.transport_mode && 
-    g_config_comm.topic_white_list.find(getName()) == g_config_comm.topic_white_list.end() )
-  {
-    std::string ip_env;
-    if (get_environment_variable(ip_env, "ROS_IP"))
-    {
-      ROS_DEBUG( "ROS_IP:%s", ip_env.c_str());
-      if (ip_env.size() == 0)
-      {
-        sub_link->setDefaultTransport(false);
-        ROS_WARN("invalid ROS_IP (an empty string)"); 
-      } 
-      else 
-      {
-        std::string remote_host = sub_link->getConnection()->getRemoteIp();
-        std::string::size_type remote_colon_pos = remote_host.find_first_of(":");
-        std::string remote_ip = remote_host.substr(0,remote_colon_pos);
-    
-        std::string local_host = sub_link->getConnection()->getLocalIp();
-
-        std::string::size_type local_colon_pos = local_host.find_first_of(":");
-        std::string local_ip = local_host.substr(0,local_colon_pos);
-
-        if (remote_ip == local_ip) 
-        {
-          ROS_DEBUG_STREAM("Local IP == Remote IP , share memory transport : " << getName()); 
-          sub_link->setDefaultTransport(false);  
-        } 
-        else
-        {
-          ROS_WARN_STREAM("Local IP != Remote IP , socket transport : " << getName() ); 
-          sub_link->setDefaultTransport(true);  
-        }
-      }
-    } 
-    else 
-    {
-      sub_link->setDefaultTransport(false);
-    }
-  } 
-  else 
-  {
-    sub_link->setDefaultTransport(true);
-  }
-
-
   if (latch_ && last_message_.buf)
   {
-    if (sub_link->getDefaultTransport()) 
-    {
-      sub_link->enqueueMessage(last_message_, true, true);      
-    }
+    sub_link->enqueueMessage(last_message_, true, true);
   }
-  
+
   // This call invokes the subscribe callback if there is one.
   // This must happen *after* the push_back above, in case the
   // callback uses publish().
@@ -604,7 +473,7 @@ bool Publication::validateHeader(const Header& header, std::string& error_msg)
   // advertised_topics through a call to unadvertise(), which could
   // have happened while we were waiting for the subscriber to
   // provide the md5sum.
-  if (isDropped())
+  if(isDropped())
   {
     std::string msg = std::string("received a tcpros connection for a nonexistent topic [") +
                 topic + std::string("] from [" + client_callerid +"].");

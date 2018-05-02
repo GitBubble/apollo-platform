@@ -47,14 +47,9 @@ def write_modules(outdir):
         #TODO: warn?
         return 0
     types_in_dir = set([f[1:-3] for f in os.listdir(outdir)
-                     if f.endswith('.py') and not f.endswith('_pb2.py') and f != '__init__.py'])
+                     if f.endswith('.py') and f != '__init__.py'])
     generated_modules = [_module_name(f) for f in sorted(types_in_dir)]
     write_module(outdir, generated_modules)
-
-    # proto_types_in_dir = set([f[:-3] for f in os.listdir(outdir)
-    #                  if f.endswith('_pb2.py') and f != '__init__.py'])
-    # generated_proto_modules = [f for f in sorted(proto_types_in_dir)]
-    # write_module(outdir, generated_proto_modules)
     return 0
 
 def write_module(basedir, generated_modules):

@@ -13,26 +13,25 @@ import genmsg.gentools
 # split incoming variables
 messages = messages_str.split(';') if messages_str != '' else []
 services = services_str.split(';') if services_str != '' else []
-protos = protos_str.split(';') if protos_str != '' else []
 dependencies = dependencies_str.split(';') if dependencies_str != '' else []
 dep_search_paths = dep_include_paths_str.split(';') if dep_include_paths_str != '' else []
-dep_proto_search_paths = dep_proto_include_paths_str.split(';') if dep_proto_include_paths_str != '' else []
+
 dep_search_paths_dict = {}
 dep_search_paths_tuple_list = []
 is_even = True
 for val in dep_search_paths:
-  if is_even:
-    dep_search_paths_dict.setdefault(val, [])
-    val_prev = val
-    is_even = False
-  else:
-    dep_search_paths_dict[val_prev].append(val)
-    dep_search_paths_tuple_list.append((val_prev, val))
-    is_even = True
+    if is_even:
+        dep_search_paths_dict.setdefault(val, [])
+        val_prev = val
+        is_even = False
+    else:
+        dep_search_paths_dict[val_prev].append(val)
+        dep_search_paths_tuple_list.append((val_prev, val))
+        is_even = True
 dep_search_paths = dep_search_paths_dict
 
-if not messages and not services and not protos:
-  print('message(WARNING "Invoking generate_messages() without having added any message or service file before.\nYou should either add add_message_files() and/or add_service_files() calls or remove the invocation of generate_messages().")')
+if not messages and not services:
+    print('message(WARNING "Invoking generate_messages() without having added any message or service file before.\nYou should either add add_message_files() and/or add_service_files() calls or remove the invocation of generate_messages().")')
 
 msg_deps = {}
 msg_dep_types = {}
@@ -54,21 +53,10 @@ for s in services:
   except genmsg.MsgNotFound as e:
     print('message(FATAL_ERROR "Could not find messages which \'%s\' depends on. Did you forget to specify generate_messages(DEPENDENCIES ...)?\n%s")' % (s, str(e).replace('"', '\\"')))
 
-proto_deps = []
-for path in dep_proto_search_paths[1:]:
-  tmplist = path.split('/');
-  if tmplist[-2] == "..":
-    proto_deps.append(tmplist[-4])
-  else:
-    proto_deps.append(tmplist[-2])
 }@
-message(STATUS "@(pkg_name): @(len(messages)) messages, @(len(services)) services, @(len(protos)) protos")
+message(STATUS "@(pkg_name): @(len(messages)) messages, @(len(services)) services")
 
 set(MSG_I_FLAGS "@(';'.join(["-I%s:%s" % (dep, dir) for dep, dir in dep_search_paths_tuple_list]))")
-find_package(Protobuf REQUIRED)
-@[for path in dep_proto_search_paths]@
-  list(APPEND PROTO_I_FLAGS -I=@path)
-@[end for]@
 
 # Find all generators
 @[if langs]@
@@ -117,33 +105,6 @@ _generate_srv_@(l[3:])(@pkg_name
 )
 @[end for]@# services
 
-### Generating proto
-@[if l[3:] == "py"]@ 
-  @[for s in protos]@
-    if(@pkg_name EQUAL "pb_msgs")
-      set(PB_PY_OUT_DIR ${CATKIN_DEVEL_PREFIX}/${@(l)_INSTALL_DIR}/pb_msgs)
-    else()
-      set(PB_PY_OUT_DIR $ENV{ROS_ROOT}/../../${PYTHON_INSTALL_DIR}/pb_msgs)
-    endif()
-    _generate_proto_py(@pkg_name
-      "@s"
-      "${PROTO_I_FLAGS}"
-      # All pb msgs should be in package pb_msgs
-      ${PB_PY_OUT_DIR}
-    )
-  @[end for]@
-@[elif l[3:] == "cpp"]@
-  @[for s in protos]@
-    _generate_proto_cpp(@pkg_name
-      "@s"
-      "${PROTO_I_FLAGS}"
-      ${CATKIN_DEVEL_PREFIX}/${@(l)_INSTALL_DIR}/@pkg_name
-      CC_FILE
-    )
-    list(APPEND SRC_ ${CC_FILE})
-  @[end for]@
-@[end if]@
-  
 ### Generating Module File
 _generate_module_@(l[3:])(@pkg_name
   ${CATKIN_DEVEL_PREFIX}/${@(l)_INSTALL_DIR}/@pkg_name
@@ -169,29 +130,6 @@ add_dependencies(@(pkg_name)_@(l) @(pkg_name)_generate_messages_@(l[3:]))
 list(APPEND ${PROJECT_NAME}_EXPORTED_TARGETS @(pkg_name)_generate_messages_@(l[3:]))
 
 @[end for]@# langs
-@[end if]@
-
-@[if len(protos) > 0]@
-include_directories(include ${CATKIN_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIR})
-@[for d in proto_deps]@
-  find_package(@(d))
-  include_directories(${@(d)_INCLUDE_DIR})
-@[end for]@
-add_library(${PROJECT_NAME}_proto ${SRC_})
-target_link_libraries(${PROJECT_NAME}_proto
-  LINK_INTERFACE_LIBRARIES
-  @[for d in proto_deps]@
-  ${@(d)_LIBRARIES}
-  @[end for]@
-  ${PROTOBUF_LIBRARY}
-)
-
-install(
-  TARGETS ${PROJECT_NAME}_proto
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
 @[end if]@
 
 @[if langs]@
@@ -220,7 +158,9 @@ if(@(l)_INSTALL_DIR AND EXISTS ${CATKIN_DEVEL_PREFIX}/${@(l)_INSTALL_DIR}/@pkg_n
   )
 endif()
 @[for d in dependencies]@
-add_dependencies(@(pkg_name)_generate_messages_@(l[3:]) @(d)_generate_messages_@(l[3:]))
+if(TARGET @(d)_generate_messages_@(l[3:]))
+  add_dependencies(@(pkg_name)_generate_messages_@(l[3:]) @(d)_generate_messages_@(l[3:]))
+endif()
 @[end for]@# dependencies
 @[end for]@# langs
 @[end if]@

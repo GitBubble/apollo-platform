@@ -46,8 +46,6 @@ from . names import make_caller_id
 from . rosenv import get_master_uri
 from . network import parse_http_host_and_port
 
-from rospy.impl.broadcast_manager import BroadcastManager
-
 class MasterException(Exception):
     """
     Base class of ROS-master related errors.
@@ -105,8 +103,6 @@ class Master(object):
         if self.caller_id[-1] == '/':
             self.caller_id = self.caller_id[:-1]
         
-        self.bm = BroadcastManager(name=self.caller_id)
-
     def _reinit(self, master_uri):
         """
         Internal API for reinitializing this handle to be a new master
@@ -316,7 +312,7 @@ class Master(object):
         @raise rosgraph.masterapi.Error: if Master returns ERROR.
         @raise rosgraph.masterapi.Failure: if Master returns FAILURE.
         """        
-        return self._succeed(self.bm.registerService(self.caller_id, service, service_api, caller_api))
+        return self._succeed(self.handle.registerService(self.caller_id, service, service_api, caller_api))
     
     def lookupService(self, service):
         """
@@ -328,19 +324,8 @@ class Master(object):
         @raise rosgraph.masterapi.Error: if Master returns ERROR.
         @raise rosgraph.masterapi.Failure: if Master returns FAILURE.
         """
-        return self._succeed(self.bm.lookupService(self.caller_id, service))
-    
-    def lookupServiceCache(self, service):
-        """
-        Lookup all provider of a particular service.
-        @param service: fully-qualified name of service to lookup.
-        @type: service: str
-        @return (int, str, str): (code, message, serviceUrl). service URL is provides
-           and address and port of the service.  Fails if there is no provider.
-        @raise rosgraph.masterapi.Error: if Master returns ERROR.
-        @raise rosgraph.masterapi.Failure: if Master returns FAILURE.
-        """
         return self._succeed(self.handle.lookupService(self.caller_id, service))
+    
 
     def unregisterService(self, service, service_api):
         """
@@ -357,7 +342,7 @@ class Master(object):
         @raise rosgraph.masterapi.Error: if Master returns ERROR.
         @raise rosgraph.masterapi.Failure: if Master returns FAILURE.
         """
-        return self._succeed(self.bm.unregisterService(self.caller_id, service, service_api))
+        return self._succeed(self.handle.unregisterService(self.caller_id, service, service_api))
     
 
     def registerSubscriber(self, topic, topic_type, caller_api):
@@ -376,7 +361,7 @@ class Master(object):
         @raise rosgraph.masterapi.Error: if Master returns ERROR.
         @raise rosgraph.masterapi.Failure: if Master returns FAILURE.
         """
-        return self._succeed(self.bm.registerSubscriber(self.caller_id, topic, topic_type, caller_api))
+        return self._succeed(self.handle.registerSubscriber(self.caller_id, topic, topic_type, caller_api))
     
 
     def unregisterSubscriber(self, topic, caller_api):
@@ -394,7 +379,7 @@ class Master(object):
         @raise rosgraph.masterapi.Error: if Master returns ERROR.
         @raise rosgraph.masterapi.Failure: if Master returns FAILURE.
         """
-        return self._succeed(self.bm.unregisterSubscriber(self.caller_id, topic, caller_api))
+        return self._succeed(self.handle.unregisterSubscriber(self.caller_id, topic, caller_api))
     
     def registerPublisher(self, topic, topic_type, caller_api):
         """
@@ -412,7 +397,7 @@ class Master(object):
         @raise rosgraph.masterapi.Error: if Master returns ERROR.
         @raise rosgraph.masterapi.Failure: if Master returns FAILURE.
         """
-        return self._succeed(self.bm.registerPublisher(self.caller_id, topic, topic_type, caller_api))
+        return self._succeed(self.handle.registerPublisher(self.caller_id, topic, topic_type, caller_api))
     
     def unregisterPublisher(self, topic, caller_api):
         """
@@ -430,7 +415,7 @@ class Master(object):
         @raise rosgraph.masterapi.Error: if Master returns ERROR.
         @raise rosgraph.masterapi.Failure: if Master returns FAILURE.
         """            
-        return self._succeed(self.bm.unregisterPublisher(self.caller_id, topic, caller_api))        
+        return self._succeed(self.handle.unregisterPublisher(self.caller_id, topic, caller_api))        
 
     def lookupNode(self, node_name):
         """

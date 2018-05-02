@@ -49,6 +49,7 @@ import rosgraph.network
 
 from rospy.exceptions import TransportInitError, TransportTerminated, ROSException, ROSInterruptException
 from rospy.service import _Service, ServiceException
+
 from rospy.impl.registration import get_service_manager
 from rospy.impl.tcpros_base import TCPROSTransport, TCPROSTransportProtocol, \
     get_tcpros_server_address, start_tcpros_server, recv_buff, \
@@ -62,7 +63,6 @@ import rospy.names
 import rospy.impl.validators
 
 import threading
-from broadcast_manager import BroadcastManager
 
 if sys.hexversion > 0x03000000: #Python3
     def isstring(s):
@@ -93,11 +93,10 @@ def wait_for_service(service, timeout=None):
     @raise ROSInterruptException: if shutdown interrupts wait
     """
     master = rosgraph.Master(rospy.names.get_caller_id())
-
     def contact_service(resolved_name, timeout=10.0):
         try:
             uri = master.lookupService(resolved_name)
-        except Exception as e:
+        except rosgraph.MasterException:
             return False
 
         addr = rospy.core.parse_rosrpc_uri(uri)
@@ -129,7 +128,6 @@ def wait_for_service(service, timeout=None):
             try:
                 if contact_service(resolved_name, timeout_t-time.time()):
                     return
-                time.sleep(0.3)
             except KeyboardInterrupt:
                 # re-raise
                 rospy.core.logdebug("wait_for_service: received keyboard interrupt, assuming signals disabled and re-raising")
@@ -138,6 +136,7 @@ def wait_for_service(service, timeout=None):
                 if first:
                     first = False
                     rospy.core.logerr("wait_for_service(%s): failed to contact [%s], will keep trying"%(resolved_name, uri))
+            time.sleep(0.3)
         if rospy.core.is_shutdown():
             raise ROSInterruptException("rospy shutdown")
         else:
@@ -147,7 +146,6 @@ def wait_for_service(service, timeout=None):
             try:
                 if contact_service(resolved_name):
                     return
-                time.sleep(0.3)
             except KeyboardInterrupt:
                 # re-raise
                 rospy.core.logdebug("wait_for_service: received keyboard interrupt, assuming signals disabled and re-raising")
@@ -156,6 +154,7 @@ def wait_for_service(service, timeout=None):
                 if first:
                     first = False
                     rospy.core.logerr("wait_for_service(%s): failed to contact [%s], will keep trying"%(resolved_name, uri))
+            time.sleep(0.3)
         if rospy.core.is_shutdown():
             raise ROSInterruptException("rospy shutdown")
     
@@ -459,7 +458,7 @@ class ServiceProxy(_Service):
                     self.uri = master.lookupService(self.resolved_name)
                 except socket.error:
                     raise ServiceException("unable to contact master")
-                except Exception as e:
+                except rosgraph.MasterError as e:
                     logger.error("[%s]: lookup service failed with message [%s]", self.resolved_name, str(e))
                     raise ServiceException("service [%s] unavailable"%self.resolved_name)
                 
@@ -609,6 +608,8 @@ class ServiceImpl(_Service):
         @param err_msg: error message to send to client
         @type  err_msg: str
         """
+        if sys.hexversion > 0x03000000: #Python3
+            err_msg = bytes(err_msg, 'utf-8')
         transport.write_data(struct.pack('<BI%ss'%len(err_msg), 0, len(err_msg), err_msg))
 
     def _handle_request(self, transport, request):

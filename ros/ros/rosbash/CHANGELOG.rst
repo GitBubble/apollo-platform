@@ -2,42 +2,78 @@
 Changelog for package rosbash
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.11.14 (2017-03-06)
---------------------
+1.14.3 (2018-01-30)
+-------------------
+* do not remove paths containing ./ or ../ from completion (`#162 <https://github.com/ros/ros/issues/162>`_)
+
+1.14.2 (2017-10-26)
+-------------------
+
+1.14.1 (2017-07-27)
+-------------------
+* add options in completion for roslaunch to roszsh (`#147 <https://github.com/ros/ros/issues/147>`_)
+* allow arguments in EDITOR env in zsh rosed (`#144 <https://github.com/ros/ros/pull/144>`_)
+
+1.14.0 (2017-02-22)
+-------------------
+
+1.13.6 (2017-10-31)
+-------------------
+* add options in completion for roslaunch to roszsh (`#147 <https://github.com/ros/ros/issues/147>`_)
+* allow arguments in EDITOR env in zsh rosed (`#144 <https://github.com/ros/ros/pull/144>`_)
+
+1.13.5 (2017-02-14)
+-------------------
+* add completion for "rosmsg info" (`#138 <https://github.com/ros/ros/pull/138>`_)
 * add "rostopic pub" completion for message type (`#132 <https://github.com/ros/ros/pull/132>`_)
+* fix "rostopic pub" completion when options are provided (`#131 <https://github.com/ros/ros/pull/131>`_)
+
+1.13.4 (2016-09-19)
+-------------------
+
+1.13.3 (2016-09-16)
+-------------------
 * fix spelling of 'rosed' in usage (`#118 <https://github.com/ros/ros/pull/118>`_)
+
+1.13.2 (2016-09-02)
+-------------------
 * add missing verbs to rosservice completion (`#117 <https://github.com/ros/ros/pull/117>`_)
 
-1.11.13 (2016-06-27)
---------------------
-* add support for fish shell (`#77 <https://github.com/ros/ros/pull/77>`_)
+1.13.1 (2016-03-13)
+-------------------
 
-1.11.12 (2016-03-10)
---------------------
+1.13.0 (2016-03-10)
+-------------------
+
+1.12.6 (2016-03-10)
+-------------------
 * add roscat to display file contents (`#99 <https://github.com/ros/ros/pull/99>`_)
 * roszsh: Ignore hidden files and directory in completion (`#100 <https://github.com/ros/ros/pull/100>`_)
 
-1.11.11 (2015-10-13)
---------------------
+1.12.5 (2015-10-13)
+-------------------
 * rosrun: allow spaces in command names and search paths (`#94 <https://github.com/ros/ros/pull/94>`_)
 
-1.11.10 (2015-10-12)
---------------------
+1.12.4 (2015-10-12)
+-------------------
 * fix zsh rosservice completion (`#92 <https://github.com/ros/ros/pull/92>`_)
 
-1.11.9 (2015-09-19)
+1.12.3 (2015-09-19)
 -------------------
 * fix roslaunch completion if path contains white spaces (`ros/ros_comm#658 <https://github.com/ros/ros_comm/issues/658>`_)
 * add rosconsole tab completion for bash (`#86 <https://github.com/ros/ros/pull/86>`_)
 * use --first-only option when calling catkin_find (`#83 <https://github.com/ros/ros/issues/83>`_)
 
-1.11.8 (2015-04-27)
+1.12.2 (2015-04-27)
 -------------------
 
-1.11.7 (2015-04-16)
+1.12.1 (2015-04-16)
 -------------------
 * add support for fish shell (`#77 <https://github.com/ros/ros/pull/77>`_)
 * enable roslaunch args completion in rosbash
+
+1.12.0 (2014-12-26)
+-------------------
 
 1.11.6 (2014-12-22)
 -------------------

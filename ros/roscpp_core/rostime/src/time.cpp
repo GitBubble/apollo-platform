@@ -45,6 +45,12 @@
 #include <stdexcept>
 #include <limits>
 
+// time related includes for macOS
+#if defined(__APPLE__)
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif  // defined(__APPLE__)
+
 #include <boost/thread/mutex.hpp>
 #include <boost/io/ios_state.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
@@ -89,24 +95,21 @@ namespace ros
   /*********************************************************************
    ** Cross Platform Functions
    *********************************************************************/
-  /*
-   * These have only internal linkage to this translation unit.
-   * (i.e. not exposed to users of the time classes)
-   */
-  void ros_walltime(uint32_t& sec, uint32_t& nsec) 
-#ifndef WIN32    
-    throw(NoHighPerformanceTimersException)
-#endif
+  void ros_walltime(uint32_t& sec, uint32_t& nsec)
   {
 #ifndef WIN32
 #if HAS_CLOCK_GETTIME
     timespec start;
     clock_gettime(CLOCK_REALTIME, &start);
+    if (start.tv_sec < 0 || start.tv_sec > UINT_MAX)
+      throw std::runtime_error("Timespec is out of dual 32-bit range");
     sec  = start.tv_sec;
     nsec = start.tv_nsec;
 #else
     struct timeval timeofday;
     gettimeofday(&timeofday,NULL);
+    if (timeofday.tv_sec < 0 || timeofday.tv_sec > UINT_MAX)
+      throw std::runtime_error("Timeofday is out of dual signed 32-bit range");
     sec  = timeofday.tv_sec;
     nsec = timeofday.tv_usec * 1000;
 #endif
@@ -144,7 +147,10 @@ namespace ros
 #else
     	start_li.QuadPart -= 116444736000000000ULL;
 #endif
-        start_sec = (uint32_t)(start_li.QuadPart / 10000000); // 100-ns units. odd.
+        int64_t start_sec64 = start_li.QuadPart / 10000000;  // 100-ns units
+        if (start_sec64 < 0 || start_sec64 > UINT_MAX)
+          throw std::runtime_error("SystemTime is out of dual 32-bit range");
+        start_sec = (uint32_t)start_sec64;
         start_nsec = (start_li.LowPart % 10000000) * 100;
       }
     LARGE_INTEGER cur_time;
@@ -167,6 +173,55 @@ namespace ros
     nsec = nsec_sum;
 #endif
   }
+
+  void ros_steadytime(uint32_t& sec, uint32_t& nsec)
+  {
+#ifndef WIN32
+    timespec start;
+#if defined(__APPLE__)
+    // On macOS use clock_get_time.
+    clock_serv_t cclock;
+    mach_timespec_t mts;
+    host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
+    clock_get_time(cclock, &mts);
+    mach_port_deallocate(mach_task_self(), cclock);
+    start.tv_sec = mts.tv_sec;
+    start.tv_nsec = mts.tv_nsec;
+#else  // defined(__APPLE__)
+    // Otherwise use clock_gettime.
+    clock_gettime(CLOCK_MONOTONIC, &start);
+#endif  // defined(__APPLE__)
+    sec  = start.tv_sec;
+    nsec = start.tv_nsec;
+#else
+    static LARGE_INTEGER cpu_frequency, performance_count;
+    // These should not ever fail since XP is already end of life:
+    // From https://msdn.microsoft.com/en-us/library/windows/desktop/ms644905(v=vs.85).aspx and
+    //      https://msdn.microsoft.com/en-us/library/windows/desktop/ms644904(v=vs.85).aspx:
+    // "On systems that run Windows XP or later, the function will always succeed and will
+    //  thus never return zero."
+    QueryPerformanceFrequency(&cpu_frequency);
+    if (cpu_frequency.QuadPart == 0) {
+      throw NoHighPerformanceTimersException();
+    }
+    QueryPerformanceCounter(&performance_count);
+    double steady_time = performance_count.QuadPart / (double) cpu_frequency.QuadPart;
+    int64_t steady_sec = floor(steady_time);
+    int64_t steady_nsec = boost::math::round((steady_time - steady_sec) * 1e9);
+
+    // Throws an exception if we go out of 32-bit range
+    normalizeSecNSecUnsigned(steady_sec, steady_nsec);
+
+    sec = steady_sec;
+    nsec = steady_nsec;
+#endif
+  }
+
+  /*
+   * These have only internal linkage to this translation unit.
+   * (i.e. not exposed to users of the time classes)
+   */
+
   /**
    * @brief Simple representation of the rt library nanosleep function.
    */
@@ -320,7 +375,10 @@ namespace ros
   Time Time::fromBoost(const boost::posix_time::time_duration& d)
   {
     Time t;
-    t.sec = d.total_seconds();
+    int64_t sec64 = d.total_seconds();
+    if (sec64 < 0 || sec64 > UINT_MAX)
+      throw std::runtime_error("time_duration is out of dual 32-bit range");
+    t.sec = (uint32_t)sec64;
 #if defined(BOOST_DATE_TIME_HAS_NANOSECONDS)
     t.nsec = d.fractional_seconds();
 #else
@@ -389,6 +447,17 @@ namespace ros
     return true;
   }
 
+  bool SteadyTime::sleepUntil(const SteadyTime& end)
+  {
+    WallDuration d(end - SteadyTime::now());
+    if (d > WallDuration(0))
+    {
+      return d.sleep();
+    }
+
+    return true;
+  }
+
   bool Duration::sleep() const
   {
     if (Time::useSystemTime())
@@ -404,9 +473,11 @@ namespace ros
             end = TIME_MAX;
           }
 
+        bool rc = false;
         while (!g_stopped && (Time::now() < end))
           {
             ros_wallsleep(0, 1000000);
+            rc = true;
 
             // If we started at time 0 wait for the first actual time to arrive before starting the timer on
             // our sleep
@@ -423,7 +494,7 @@ namespace ros
               }
           }
 
-        return true;
+        return rc && !g_stopped;
       }
   }
 
@@ -434,10 +505,25 @@ namespace ros
     return os;
   }
 
+  std::ostream &operator<<(std::ostream& os, const SteadyTime &rhs)
+  {
+    boost::io::ios_all_saver s(os);
+    os << rhs.sec << "." << std::setw(9) << std::setfill('0') << rhs.nsec;
+    return os;
+  }
+
   WallTime WallTime::now()
   {
     WallTime t;
     ros_walltime(t.sec, t.nsec);
+
+    return t;
+  }
+
+  SteadyTime SteadyTime::now()
+  {
+    SteadyTime t;
+    ros_steadytime(t.sec, t.nsec);
 
     return t;
   }
@@ -503,6 +589,7 @@ namespace ros
 
   template class TimeBase<Time, Duration>;
   template class TimeBase<WallTime, WallDuration>;
+  template class TimeBase<SteadyTime, WallDuration>;
 }
 
 

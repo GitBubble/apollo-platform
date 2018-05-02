@@ -29,6 +29,7 @@
 #define ROSLIB_MESSAGE_TRAITS_H
 
 #include "message_forward.h"
+
 #include <ros/time.h>
 
 #include <string>
@@ -38,7 +39,7 @@
 
 namespace std_msgs
 {
-  ROS_DECLARE_MESSAGE(Header);
+  ROS_DECLARE_MESSAGE(Header)
 }
 
 #define ROS_IMPLEMENT_SIMPLE_TOPIC_TRAITS(msg, md5sum, datatype, definition) \
@@ -63,6 +64,7 @@ namespace std_msgs
   }; \
   } \
   }
+
 
 namespace ros
 {
@@ -93,25 +95,25 @@ struct FalseType
  * \brief A simple datatype is one that can be memcpy'd directly in array form, i.e. it's a POD, fixed-size type and
  * sizeof(M) == sum(serializationLength(M:a...))
  */
-template<typename M, typename Enable = void> struct IsSimple : public FalseType {};
+template<typename M> struct IsSimple : public FalseType {};
 /**
  * \brief A fixed-size datatype is one whose size is constant, i.e. it has no variable-length arrays or strings
  */
-template<typename M, typename Enable = void> struct IsFixedSize : public FalseType {};
+template<typename M> struct IsFixedSize : public FalseType {};
 /**
  * \brief HasHeader informs whether or not there is a header that gets serialized as the first thing in the message
  */
-template<typename M, typename Enable = void> struct HasHeader : public FalseType {};
+template<typename M> struct HasHeader : public FalseType {};
 
 /**
  * \brief Am I message or not
  */
-template<typename M, typename Enable = void> struct IsMessage : public FalseType {};
+template<typename M> struct IsMessage : public FalseType {};
 
 /**
  * \brief Specialize to provide the md5sum for a message
  */
-template<typename M, typename Enable = void>
+template<typename M>
 struct MD5Sum
 {
   static const char* value()
@@ -128,7 +130,7 @@ struct MD5Sum
 /**
  * \brief Specialize to provide the datatype for a message
  */
-template<typename M, typename Enable = void>
+template<typename M>
 struct DataType
 {
   static const char* value()
@@ -145,7 +147,7 @@ struct DataType
 /**
  * \brief Specialize to provide the definition for a message
  */
-template<typename M, typename Enable = void>
+template<typename M>
 struct Definition
 {
   static const char* value()

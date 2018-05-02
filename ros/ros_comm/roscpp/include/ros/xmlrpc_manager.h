@@ -36,7 +36,7 @@
 #include <boost/enable_shared_from_this.hpp>
 
 #include "common.h"
-#include "XmlRpc.h"
+#include "xmlrpcpp/XmlRpc.h"
 
 #include <ros/time.h>
 
@@ -80,7 +80,7 @@ public:
   }
 
   bool in_use_;
-  ros::WallTime last_use_time_; // for reaping
+  ros::SteadyTime last_use_time_; // for reaping
   XmlRpc::XmlRpcClient* client_;
 
   static const ros::WallDuration s_zombie_time_; // how long before it is toasted
@@ -127,7 +127,7 @@ public:
   bool bind(const std::string& function_name, const XMLRPCFunc& cb);
   void unbind(const std::string& function_name);
 
-  void start(int port = 0);
+  void start();
   void shutdown();
 
   bool isShuttingDown() { return shutting_down_; }

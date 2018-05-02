@@ -43,7 +43,6 @@ import os
 import sys
 import rospkg
 import roslib
-import hashlib
 
 import genmsg
 import genpy.message #for wrapping get_message_class, get_service_class
@@ -53,42 +52,6 @@ from genpy import Message, DeserializationError, SerializationError, \
      Time, Duration, TVal
 from genpy.message import get_printable_message_args, fill_message_args
 from genpy.message import check_type, strify_message
-
-import google.protobuf.message
-from types import MethodType
-import sys
-python3 = True if sys.hexversion > 0x03000000 else False
-import struct
-
-def serialize_protobuf(self, buff):
-    try:
-        _x = self.SerializeToString()
-        length = len(_x)
-        if python3 or type(_x) == unicode:
-            _x = _x.encode('utf-8')
-            length = len(_x)
-        if python3:
-            buff.write(struct.pack('<I%sB'%length, length, *_x))
-        else:
-            buff.write(struct.pack('<I%ss'%length, length, _x))
-    except struct.error as se: self._check_types(struct.error("%s: '%s' when writing '%s'" % (type(se), str(se), str(locals().get('_x', self)))))
-    except TypeError as te: self._check_types(ValueError("%s: '%s' when writing '%s'" % (type(te), str(te), str(locals().get('_x', self)))))
-
-def deserialize_protobuf(self, str):
-    try:
-        end = 0
-        start = end
-        end += 4
-        (length,) = genpy.struct_I.unpack(str[start:end])
-        start = end
-        end += length
-        if python3:
-            self.ParseFromString(str[start:end].decode('utf-8'))
-        else:
-            self.ParseFromString(str[start:end])
-        return self
-    except struct.error as e:
-        raise genpy.DeserializationError(e) #most likely buffer underfill
 
 def _get_message_or_service_class(type_str, message_type, reload_on_error=False):
     ## parse package and local type name for import
@@ -121,10 +84,6 @@ def _get_message_or_service_class(type_str, message_type, reload_on_error=False)
             val = getattr(getattr(pypkg, type_str), base_type)
         except:
             val = None
-
-    #add message interfac fro protobuf
-    add_rosmsg_interface_for_protobuf(val)
-
     return val
         
 ## cache for get_message_class
@@ -138,10 +97,6 @@ def get_message_class(message_type, reload_on_error=False):
         return _message_class_cache[message_type]
     # try w/o bootstrapping
     cls = genpy.message.get_message_class(message_type, reload_on_error=reload_on_error)
-
-    #add message interfac fro protobuf
-    add_rosmsg_interface_for_protobuf(cls)
-
     if cls is None:
         # try old loader w/ bootstrapping
         cls = _get_message_or_service_class('msg', message_type, reload_on_error=reload_on_error)
@@ -160,21 +115,3 @@ def get_service_class(service_type, reload_on_error=False):
     if cls:
         _service_class_cache[service_type] = cls
     return cls
-
-_type_md5_cache = {}
-def get_md5sum(data_type):
-    if not _type_md5_cache.has_key(data_type):
-        md5 = hashlib.md5()
-        md5.update(data_type)
-        _type_md5_cache[data_type] = md5.hexdigest()
-    return _type_md5_cache[data_type]
-
-def add_rosmsg_interface_for_protobuf(cls):
-    if cls is not None and issubclass(cls, google.protobuf.message.Message):
-        type(cls)._type = property(lambda self: "pb_msgs/" + self.DESCRIPTOR.name)
-        type(cls)._md5sum = property(lambda self: get_md5sum(self._type))
-        type(cls)._full_text = property(lambda self: "protobuf")
-        type(cls)._has_header = property(lambda self: False)
-
-        setattr(cls, 'deserialize', deserialize_protobuf)
-        setattr(cls, 'serialize', serialize_protobuf)

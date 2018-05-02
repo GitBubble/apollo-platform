@@ -101,6 +101,8 @@ class LogAppender
 {
 public:
 
+  virtual ~LogAppender() {}
+
   virtual void log(::ros::console::Level level, const char* str, const char* file, const char* function, int line) = 0;
 
 };
@@ -109,6 +111,7 @@ ROSCONSOLE_DECL void register_appender(LogAppender* appender);
 
 struct Token
 {
+  virtual ~Token() {}
   /*
    * @param level
    * @param message
@@ -323,7 +326,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
     { \
       ::ros::console::initialize(); \
     } \
-  } while(0)
+  } while(false)
 
 #define ROSCONSOLE_DEFINE_LOCATION(cond, level, name) \
   ROSCONSOLE_AUTOINIT; \
@@ -375,7 +378,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
     { \
       ROSCONSOLE_PRINT_AT_LOCATION(__VA_ARGS__); \
     } \
-  } while(0)
+  } while(false)
 
 /**
  * \brief Log to a given named logger at a given verbosity level, only if a given condition has been met, with stream-style formatting
@@ -394,7 +397,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
     { \
       ROSCONSOLE_PRINT_STREAM_AT_LOCATION(args); \
     } \
-  } while(0)
+  } while(false)
 
 /**
  * \brief Log to a given named logger at a given verbosity level, only the first time it is hit when enabled, with printf-style formatting
@@ -412,7 +415,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
       hit = true; \
       ROSCONSOLE_PRINT_AT_LOCATION(__VA_ARGS__); \
     } \
-  } while(0)
+  } while(false)
 
 // inside a macro which uses args use only well namespaced variable names in order to not overlay variables coming in via args
 /**
@@ -431,7 +434,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
       __ros_log_stream_once__hit__ = true; \
       ROSCONSOLE_PRINT_STREAM_AT_LOCATION(args); \
     } \
-  } while(0)
+  } while(false)
 
 /**
  * \brief Log to a given named logger at a given verbosity level, limited to a specific rate of printing, with printf-style formatting
@@ -451,7 +454,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
       last_hit = now.toSec(); \
       ROSCONSOLE_PRINT_AT_LOCATION(__VA_ARGS__); \
     } \
-  } while(0)
+  } while(false)
 
 // inside a macro which uses args use only well namespaced variable names in order to not overlay variables coming in via args
 /**
@@ -472,7 +475,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
       __ros_log_stream_throttle__last_hit__ = __ros_log_stream_throttle__now__.toSec(); \
       ROSCONSOLE_PRINT_STREAM_AT_LOCATION(args); \
     } \
-  } while(0)
+  } while(false)
 
 /**
  * \brief Log to a given named logger at a given verbosity level, limited to a specific rate of printing, with printf-style formatting
@@ -492,7 +495,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
       __ros_log_delayed_throttle__last_hit__ = __ros_log_delayed_throttle__now__.toSec(); \
       ROSCONSOLE_PRINT_AT_LOCATION(__VA_ARGS__); \
     } \
-  } while(0)
+  } while(false)
 
 // inside a macro which uses args use only well namespaced variable names in order to not overlay variables coming in via args
 /**
@@ -513,7 +516,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
       __ros_log_stream_delayed_throttle__last_hit__ = __ros_log_stream_delayed_throttle__now__.toSec(); \
       ROSCONSOLE_PRINT_STREAM_AT_LOCATION(args); \
     } \
-  } while(0)
+  } while(false)
 
 /**
  * \brief Log to a given named logger at a given verbosity level, with user-defined filtering, with printf-style formatting
@@ -530,7 +533,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
     { \
       ROSCONSOLE_PRINT_AT_LOCATION_WITH_FILTER(filter, __VA_ARGS__); \
     } \
-  } while(0)
+  } while(false)
 
 /**
  * \brief Log to a given named logger at a given verbosity level, with user-defined filtering, with stream-style formatting
@@ -547,7 +550,7 @@ ROSCONSOLE_DECL std::string formatToString(const char* fmt, ...);
     { \
       ROSCONSOLE_PRINT_STREAM_AT_LOCATION_WITH_FILTER(filter, args); \
     } \
-  } while(0)
+  } while(false)
 
 /**
  * \brief Log to a given named logger at a given verbosity level, with printf-style formatting

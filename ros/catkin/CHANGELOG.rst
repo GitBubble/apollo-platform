@@ -2,19 +2,80 @@
 Changelog for package catkin
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-0.6.19 (2017-03-06)
+0.7.11 (2018-02-02)
 -------------------
+* catkin_add_gtest: drop explicit add_dependencies(), rely on CMake. (`#917 <https://github.com/ros/catkin/issues/917>`_)
+* prevent reading non-whitelisted properties of interface targets (`#916 <https://github.com/ros/catkin/issues/916>`_)
+* fix logic when only gtest is present (`#919 <https://github.com/ros/catkin/issues/919>`_)
+* add option to pass specific version to catkin_prepare_release (`#918 <https://github.com/ros/catkin/issues/918>`_)
+
+0.7.10 (2018-01-24)
+-------------------
+* support for googletest 1.8 and deduplicated code (`#914 <https://github.com/ros/catkin/pull/914>`_)
+
+0.7.9 (2018-01-22)
+------------------
+* add support for GMock (`#897 <https://github.com/ros/catkin/pull/897>`_)
+* provide default values to unbound variables in setup.sh.in (`#907 <https://github.com/ros/catkin/pull/907>`_)
+* cleanup environment changes reliably (`#906 <https://github.com/ros/catkin/pull/906>`_)
+* call the find PythonInterp with version in the arguments (`#898 <https://github.com/ros/catkin/issues/898>`_)
+* fix python3 support for builder.py (`#903 <https://github.com/ros/catkin/pull/903>`_)
+* fix Unicode write error (`#902 <https://github.com/ros/catkin/pull/902>`_)
+
+0.7.8 (2017-10-27)
+------------------
+* handle EOF on raw_input (`#888 <https://github.com/ros/catkin/issues/888>`_)
+* dynamically check gtest library type (`#885 <https://github.com/ros/catkin/issues/885>`_)
+* remove executable flag since file is not a script (`#882 <https://github.com/ros/catkin/issues/882>`_)
+
+0.7.7 (2017-07-27)
+------------------
+* fix warning in case devel space is nested in the build space (`#880 <https://github.com/ros/catkin/pull/880>`_)
+* remove workaround using -l:<libpath> necessary for older pkg-config versions (`#879 <https://github.com/ros/catkin/issues/879>`_)
+* replace exec call with runpy.run_path (`#873 <https://github.com/ros/catkin/issues/873>`_)
+* use environment variable to extend environment in plain shell (`#862 <https://github.com/ros/catkin/issues/862>`_)
+* prefer reporting problems to bugtracker / website before maintainer (`#861 <https://github.com/ros/catkin/issues/861>`_)
+
+0.7.6 (2017-02-17)
+------------------
+* skip gtest install rules for newer gtest versions (`#857 <https://github.com/ros/catkin/issues/857>`_)
+
+0.7.5 (2017-02-14)
+------------------
 * update --pkg help for catkin_make_isolated (`#853 <https://github.com/ros/catkin/issues/853>`_)
 * add skipped / disabled tests to catkin_test_results summary (`#848 <https://github.com/ros/catkin/issues/848>`_)
+* use functions instead of macros where possible to avoid leaking variables (`#835 <https://github.com/ros/catkin/issues/835>`_)
+* write output of parsing package xml as UTF-8 for Python 3 (`#828 <https://github.com/ros/catkin/issues/828>`_)
+* update documentation
+
+0.7.4 (2016-09-25)
+------------------
+* fix regression in logic to select make / ninja for CMake packages from 0.7.2 (`#826 <https://github.com/ros/catkin/issues/826>`_)
+
+0.7.3 (2016-09-19)
+------------------
+* relax fixed DEPENDS check from last release (`#825 <https://github.com/ros/catkin/issues/825>`_)
+
+0.7.2 (2016-09-02)
+------------------
+* change warning to status when nosetests was not found (`#823 <https://github.com/ros/catkin/issues/823>`_)
+* maintain file context when invoking Python scripts through relay (`#820 <https://github.com/ros/catkin/issues/820>`_)
 * fix rollback logic for more than one value per environment variable and workspace (`#819 <https://github.com/ros/catkin/issues/819>`_)
+* add option to use NMake instead of Make (`#816 <https://github.com/ros/catkin/pull/816>`_)
+* fix check if DEPENDS was found (`#813 <https://github.com/ros/catkin/issues/813>`_)
 * fix quoting of paths to handle spaces (`#808 <https://github.com/ros/catkin/issues/808>`_)
+* update doc of catkin_package to clarify importance of case for variable names
 * improve doc about catkin_package(CFG_EXTRAS) (`#805 <https://github.com/ros/catkin/issues/805>`_)
 * doc: fix format 2 howto to suggest to declare a build export dependency on "message_runtime"
-* update documentation (`#847 <https://github.com/ros/catkin/pull/847>`_ `#849 <https://github.com/ros/catkin/pull/849>`_ `#854 <https://github.com/ros/catkin/pull/854>`_)
 
-0.6.18 (2016-03-18)
--------------------
+0.7.1 (2016-03-18)
+------------------
 * expose format 2 style dependencies as CMake variables (`#787 <https://github.com/ros/catkin/issues/787>`_)
+
+0.7.0 (2016-03-04)
+------------------
+* remove CPATH from setup files (`#783 <https://github.com/ros/catkin/issues/783>`_)
+* use NO_MODULE to find exported catkin dependencies (`#760 <https://github.com/ros/catkin/issues/760>`_)
 
 0.6.17 (2016-03-03)
 -------------------
@@ -240,7 +301,7 @@ Changelog for package catkin
 -------------------
 * support multiple package names for catkin_make --pkg (`#504 <https://github.com/ros/catkin/issues/504>`_)
 * improve help message on catkin_make_isolated --from-pkg
-* fix include path in generated .pc files to be absolute (fix `#506 <https://github.com/ros/catkin/issues/506>`_, regression of 0.5.72)
+* fix include path in generated .pc files to be absolute (`#506 <https://github.com/ros/catkin/issues/506>`_, regression of 0.5.72)
 * fix handling DESTDIR in catkin_make_isolated for plain cmake packages (`#499 <https://github.com/ros/catkin/issues/499>`_)
 * fix catkin_python_setup to consider actual package names inside setup.py when signaling that an __init__.py file is installed to genmsg/dynamic_reconfigure (`ros/genmsg#34 <https://github.com/ros/genmsg/issues/34>`_)
 * fix unsetting temporary variables - especially CATKIN_SETUP_DIR - to not influence next environment (`#505 <https://github.com/ros/catkin/issues/505>`_)
@@ -319,7 +380,7 @@ Changelog for package catkin
 * fixes:
 
   * update check in generated pkgConfig.cmake files to work independent of cmake policy CMD0012 (`#452 <https://github.com/ros/catkin/issues/452>`_)
-  * fix generating pkg-config files with empty -I directives (fix `#445 <https://github.com/ros/catkin/issues/445>`_)
+  * fix generating pkg-config files with empty -I directives (`#445 <https://github.com/ros/catkin/issues/445>`_)
 
 * update documentation, especially about testing
 * for a complete list of changes see the `commit log for 0.5.68 <https://github.com/ros/catkin/compare/0.5.67...0.5.68>`_

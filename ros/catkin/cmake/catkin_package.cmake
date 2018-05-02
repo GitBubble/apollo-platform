@@ -31,7 +31,9 @@
 # :param DEPENDS: a list of CMake projects which this project depends
 #   on.  Since they might not be *find_packagable* or lack a pkg-config
 #   file their ``INCLUDE_DIRS`` and ``LIBRARIES`` are passed directly.
-#   This requires that it has been ``find_package``\ -ed before.
+#   This requires that it has been ``find_package``\ -ed before and all
+#   variables (``<name>_FOUND``, ``<name>_INCLUDE_DIRS``, etc.) have the
+#   same case as this argument.
 # :type DEPENDS: list of strings
 # :param CFG_EXTRAS: a CMake file containing extra stuff that should
 #   be accessible to users of this package after
@@ -144,7 +146,7 @@ function(_catkin_package)
     endif()
     if("${second_item}" STREQUAL "COMPONENTS")
       list(GET depend_list 0 depend_name)
-      if(NOT ${${depend_name}_FOUND})
+      if(NOT ${depend_name}_FOUND)
         message(FATAL_ERROR "catkin_package() DEPENDS on '${depend}' which must be find_package()-ed before")
       endif()
       message(WARNING "catkin_package() DEPENDS on '${depend}' which is deprecated. find_package() it before and only DEPENDS on '${depend_name}' instead")
@@ -157,8 +159,11 @@ function(_catkin_package)
           #message(WARNING "catkin_package() DEPENDS on catkin package '${depend_name}' which is deprecated. Use CATKIN_DEPENDS for catkin packages instead.")
           list(APPEND _PROJECT_CATKIN_DEPENDS ${depend_name})
         else()
-          if(NOT ${${depend_name}_FOUND})
-            message(FATAL_ERROR "catkin_package() DEPENDS on '${depend_name}' which must be find_package()-ed before. If it is a catkin package it can be declared as CATKIN_DEPENDS instead without find_package()-ing it.")
+          # the dependency might not come from a CMake config / module file
+          # but from e.g. PkgConfig / pkg_search_module
+          # therefore this can't expect ${depend_name}_FOUND to be defined
+          if(NOT DEFINED ${depend_name}_INCLUDE_DIRS AND NOT DEFINED ${depend_name}_LIBRARIES)
+            message(WARNING "catkin_package() DEPENDS on '${depend_name}' but neither '${depend_name}_INCLUDE_DIRS' nor '${depend_name}_LIBRARIES' is defined.")
           endif()
           list(APPEND PROJECT_DEPENDENCIES_INCLUDE_DIRS ${${depend_name}_INCLUDE_DIRS})
           list(APPEND PROJECT_DEPENDENCIES_LIBRARIES ${${depend_name}_LIBRARIES})
@@ -230,6 +235,10 @@ function(_catkin_package)
   # package maintainer provided by package.cmake/xml
   set(PROJECT_MAINTAINER ${${PROJECT_NAME}_MAINTAINER})
 
+  # urls provided by package.cmake/xml
+  set(PROJECT_URL_WEBSITE ${${PROJECT_NAME}_URL_WEBSITE})
+  set(PROJECT_URL_BUGTRACKER ${${PROJECT_NAME}_URL_BUGTRACKER})
+
   # get library paths from all workspaces
   set(lib_paths "")
   foreach(workspace ${CATKIN_WORKSPACES})
@@ -260,12 +269,7 @@ function(_catkin_package)
   set(PKG_CONFIG_LIBRARIES_WITH_PREFIX "")
   catkin_filter_libraries_for_build_configuration(libraries ${PKG_CONFIG_LIBRARIES})
   foreach(library ${libraries})
-    if(IS_ABSOLUTE ${library})
-      get_filename_component(suffix ${library} EXT)
-      if(NOT "${suffix}" STREQUAL "${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        set(library "-l:${library}")
-      endif()
-    else()
+    if(NOT IS_ABSOLUTE ${library})
       set(library "-l${library}")
     endif()
     list_append_deduplicate(PKG_CONFIG_LIBRARIES_WITH_PREFIX ${library})
@@ -407,7 +411,7 @@ function(_catkin_package)
     string_starts_with("${idir}/" "${CATKIN_DEVEL_PREFIX}/" _is_devel_prefix)
     if(_is_source_prefix OR _is_build_prefix OR _is_devel_prefix)
       # generated header files should be places in the devel space rather then in the build space
-      if(_is_build_prefix)
+      if(_is_build_prefix AND NOT _is_devel_prefix)
         message(WARNING "catkin_package() include dir '${idir}' should be placed in the devel space instead of the build space")
       endif()
       # the value doesn't matter as long as it doesn't match IS_ABSOLUTE

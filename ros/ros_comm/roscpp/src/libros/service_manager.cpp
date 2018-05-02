@@ -27,7 +27,6 @@
 
 #include <cstdio>
 #include "ros/service_manager.h"
-#include "ros/broadcast_manager.h"
 #include "ros/xmlrpc_manager.h"
 #include "ros/connection_manager.h"
 #include "ros/poll_manager.h"
@@ -43,7 +42,7 @@
 #include "ros/connection.h"
 #include "ros/file_log.h"
 
-#include "XmlRpc.h"
+#include "xmlrpcpp/XmlRpc.h"
 
 #include <ros/console.h>
 
@@ -53,20 +52,10 @@ using namespace std; // sigh
 namespace ros
 {
 
-ServiceManagerPtr g_service_manager;
-boost::mutex g_service_manager_mutex;
 const ServiceManagerPtr& ServiceManager::instance()
 {
-  if (!g_service_manager)
-  {
-    boost::mutex::scoped_lock lock(g_service_manager_mutex);
-    if (!g_service_manager)
-    {
-      g_service_manager = boost::make_shared<ServiceManager>();
-    }
-  }
-
-  return g_service_manager;
+  static ServiceManagerPtr service_manager = boost::make_shared<ServiceManager>();
+  return service_manager;
 }
 
 ServiceManager::ServiceManager()
@@ -153,13 +142,16 @@ bool ServiceManager::advertiseService(const AdvertiseServiceOptions& ops)
     service_publications_.push_back(pub);
   }
 
+  XmlRpcValue args, result, payload;
+  args[0] = this_node::getName();
+  args[1] = ops.service;
   char uri_buf[1024];
   snprintf(uri_buf, sizeof(uri_buf), "rosrpc://%s:%d",
            network::getHost().c_str(), connection_manager_->getTCPPort());
-  BroadcastManager::instance()->registerService(this_node::getName(),
-                                         ops.service,
-                                         string(uri_buf),
-                                         xmlrpc_manager_->getServerURI());
+  args[2] = string(uri_buf);
+  args[3] = xmlrpc_manager_->getServerURI();
+  master::execute("registerService", args, result, payload, true);
+
   return true;
 }
 
@@ -200,10 +192,16 @@ bool ServiceManager::unadvertiseService(const string &serv_name)
 
 bool ServiceManager::unregisterService(const std::string& service)
 {
+  XmlRpcValue args, result, payload;
+  args[0] = this_node::getName();
+  args[1] = service;
   char uri_buf[1024];
   snprintf(uri_buf, sizeof(uri_buf), "rosrpc://%s:%d",
            network::getHost().c_str(), connection_manager_->getTCPPort());
-  BroadcastManager::instance()->unregisterService(service, string(uri_buf));
+  args[2] = string(uri_buf);
+
+  master::execute("unregisterService", args, result, payload, false);
+
   return true;
 }
 
@@ -307,11 +305,13 @@ void ServiceManager::removeServiceServerLink(const ServiceServerLinkPtr& client)
 
 bool ServiceManager::lookupService(const string &name, string &serv_host, uint32_t &serv_port)
 {
-  string serv_uri;
-  if (!BroadcastManager::instance()->lookupService(name, serv_uri)) 
-  {
+  XmlRpcValue args, result, payload;
+  args[0] = this_node::getName();
+  args[1] = name;
+  if (!master::execute("lookupService", args, result, payload, false))
     return false;
-  }
+
+  string serv_uri(payload);
   if (!serv_uri.length()) // shouldn't happen. but let's be sure.
   {
     ROS_ERROR("lookupService: Empty server URI returned from master");
