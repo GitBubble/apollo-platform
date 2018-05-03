@@ -96,7 +96,8 @@ class TCPROSSub(TCPROSTransportProtocol):
                 'tcp_nodelay': '1' if self.tcp_nodelay else '0',
                 'md5sum': self.recv_data_class._md5sum,
                 'type': self.recv_data_class._type,
-                'callerid': rospy.names.get_caller_id()}        
+                'callerid': rospy.names.get_caller_id(),
+                'node_type': "rospy"}        
 
 # Separate method for easier testing
 def _configure_pub_socket(sock, is_tcp_nodelay):
@@ -145,7 +146,8 @@ class TCPROSPub(TCPROSTransportProtocol):
                 'latching': '1' if self.is_latch else '0',
                 'message_definition': self.pub_data_class._full_text,
                 'md5sum': self.pub_data_class._md5sum, 
-                'callerid': rospy.names.get_caller_id() }
+                'callerid': rospy.names.get_caller_id(),
+                'node_type': "rospy"}
         
         # this implementation allows the user to override builtin
         # fields.  this could potentially enable some interesting

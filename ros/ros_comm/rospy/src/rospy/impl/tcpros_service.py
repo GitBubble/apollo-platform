@@ -63,6 +63,7 @@ import rospy.names
 import rospy.impl.validators
 
 import threading
+from broadcast_manager import BroadcastManager
 
 if sys.hexversion > 0x03000000: #Python3
     def isstring(s):

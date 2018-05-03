@@ -47,6 +47,8 @@ import rospy.names
 
 import rospy.impl.paramserver
 import rospy.impl.masterslave
+from rospy.impl.broadcast_manager import BroadcastManager
+from rospy.impl.registration import get_broadcast_manager, set_broadcast_manager
 
 _master_arg_remap = { 
     'deleteParam': [0], # remap key
@@ -86,7 +88,12 @@ class MasterProxy(object):
         @param uri: XML-RPC URI of master
         @type  uri: str
         """
-        self.target = rospy.core.xmlrpcapi(uri)        
+        self.target = rospy.core.xmlrpcapi(uri)
+
+        if get_broadcast_manager() is None:
+            set_broadcast_manager(BroadcastManager())
+        self.bm = get_broadcast_manager()
+
         self._lock = Lock()
 
     def __getattr__(self, key): #forward api calls to target

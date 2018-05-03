@@ -45,6 +45,7 @@ import time
 import rosgraph.xmlrpc
 
 import rosmaster.master_api
+from rosmaster.broadcast_handler import BroadcastHandler
 
 DEFAULT_MASTER_PORT=11311 #default port for master's to bind to
 
@@ -74,6 +75,7 @@ class Master(object):
         self.handler = handler
         self.master_node = master_node
         self.uri = master_node.uri
+        self.bm = BroadcastHandler(handler)
         
         logging.getLogger('rosmaster.master').info("Master initialized: port[%s], uri[%s]", self.port, self.uri)
 

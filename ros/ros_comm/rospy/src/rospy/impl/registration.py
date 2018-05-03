@@ -68,6 +68,25 @@ def set_service_manager(sm):
 def get_service_manager():
     return _service_manager
 
+
+broadcast_manager_handler = None
+def set_broadcast_manager(bm):
+    global broadcast_manager_handler
+    broadcast_manager_handler = bm
+def get_broadcast_manager():
+    global broadcast_manager_handler   
+    return broadcast_manager_handler
+
+
+node_handler = None
+def set_node_handler(handler):
+    global node_handler
+    node_handler = handler
+def get_node_handler():
+    global node_handler   
+    return node_handler
+
+
     
 class Registration(object):
     """Registration types"""
@@ -191,7 +210,8 @@ class RegManager(RegistrationListener):
         """
         self.logger = logging.getLogger("rospy.registration")
         self.handler = handler
-        self.uri = self.master_uri = None
+        self.uri = None
+        self.master_uri = None
         self.updates = []
         self.cond = threading.Condition() #for locking/notifying updates
         self.registered = False
@@ -215,13 +235,11 @@ class RegManager(RegistrationListener):
         sm = get_service_manager()
         ns = get_namespace()
         caller_id = get_caller_id()
-        if not master_uri or master_uri == uri:
-            registered = True
-            master = None
-        else:
-            registered = False
-            master = xmlrpcapi(master_uri)
-            self.logger.info("Registering with master node %s", master_uri)
+        registered = False
+
+        while get_broadcast_manager() is None:
+            time.sleep(0.01)
+        bm = get_broadcast_manager()
 
         while not registered and not is_shutdown():
             try:
@@ -229,28 +247,39 @@ class RegManager(RegistrationListener):
                     # prevent TopicManager and ServiceManager from accepting registrations until we are done
                     tm.lock.acquire()
                     sm.lock.acquire()                    
-
+    
                     pub, sub, srv = tm.get_publications(), tm.get_subscriptions(), sm.get_services()
                     for resolved_name, data_type in pub:
-                        self.logger.info("Registering publisher topic [%s] type [%s] with master", resolved_name, data_type)
-                        code, msg, val = master.registerPublisher(caller_id, resolved_name, data_type, uri)
+                        self.logger.info("Registering publisher topic [%s] type [%s]", resolved_name, data_type)
+
+                        self.logger.info("registerPublisher(%s, %s, %s, %s)"% (caller_id, resolved_name, data_type, uri))
+                        code, msg, val = bm.registerPublisher(caller_id, resolved_name, data_type, uri)
+
                         if code != 1:
-                            logfatal("cannot register publication topic [%s] with master: %s"%(resolved_name, msg))
-                            signal_shutdown("master/node incompatibility with register publisher")
+                            logfatal("cannot register publication topic [%s]: %s"%(resolved_name, msg))
+                            signal_shutdown("node incompatibility with register publisher")
+
                     for resolved_name, data_type in sub:
-                        self.logger.info("registering subscriber topic [%s] type [%s] with master", resolved_name, data_type)
-                        code, msg, val = master.registerSubscriber(caller_id, resolved_name, data_type, uri)
+                        self.logger.info("registering subscriber topic [%s] type [%s]", resolved_name, data_type)
+                        
+                        self.logger.info("registerSubscriber(%s, %s, %s, %s)"% (caller_id, resolved_name, data_type, uri))
+                        code, msg, val = bm.registerSubscriber(caller_id, resolved_name, data_type, uri)
+                       
                         if code != 1:
-                            logfatal("cannot register subscription topic [%s] with master: %s"%(resolved_name, msg))
-                            signal_shutdown("master/node incompatibility with register subscriber")                        
+                            logfatal("cannot register subscription topic [%s]: %s"%(resolved_name, msg))
+                            signal_shutdown("node incompatibility with register subscriber")                        
                         else:
                             self.publisher_update(resolved_name, val)
+                       
+
                     for resolved_name, service_uri in srv:
-                        self.logger.info("registering service [%s] uri [%s] with master", resolved_name, service_uri)
-                        code, msg, val = master.registerService(caller_id, resolved_name, service_uri, uri)
+                        self.logger.info("registering service [%s] uri [%s]", resolved_name, service_uri)
+
+                        self.logger.info("registerService(%s, %s, %s, %s)"% (caller_id, resolved_name, data_type, uri))
+                        code, msg, val = bm.registerService(caller_id, resolved_name, service_uri, uri)
                         if code != 1:
-                            logfatal("cannot register service [%s] with master: %s"%(resolved_name, msg))
-                            signal_shutdown("master/node incompatibility with register service")                        
+                            logfatal("cannot register service [%s]: %s"%(resolved_name, msg))
+                            signal_shutdown("node incompatibility with register service")                        
  
                     registered = True
                     
@@ -261,14 +290,15 @@ class RegManager(RegistrationListener):
                     tm.lock.release()
                 
                 if pub or sub:
-                    logdebug("Registered [%s] with master node %s", caller_id, master_uri)
+                    logdebug("Registered [%s]", caller_id)
                 else:
-                    logdebug("No topics to register with master node %s", master_uri)
+                    logdebug("No topics to register")
                     
             except Exception as e:
                 if first:
                     # this use to print to console always, arguable whether or not this should be subjected to same configuration options as logging
-                    logerr("Unable to immediately register with master node [%s]: master may not be running yet. Will keep trying."%master_uri)
+                    logerr(e)
+                    logerr("Unable to immediately register.")
                     first = False
                 time.sleep(0.2)
         self.registered = True
@@ -298,21 +328,25 @@ class RegManager(RegistrationListener):
                 if self.updates:
                     #work from the end as these are the most up-to-date
                     topic, uris = self.updates.pop()
+
+                    #print "update", topic, uris
                     #filter out older updates for same topic
-                    self.updates = [x for x in self.updates if x[0] != topic]
+                    #self.updates = [x for x in self.updates if x[0] != topic]
+                    self.updates = [x for x in self.updates if x[0] != topic or x[1] != uris]
                 else:
                     topic = uris = None
             finally:
                 if cond is not None:
                     cond.release()
 
-            get_topic_manager().check_all()
-
             #call _connect_topic on all URIs as it can check to see whether
             #or not a connection exists.
             if uris and not self.handler.done:
+                
                 for uri in uris:
+                    self.logger.debug("pub update:(%s,%s)" % (topic, uri))
                     # #1141: have to multithread this to prevent a bad publisher from hanging us
+                    #print topic, uri
                     t = threading.Thread(target=self._connect_topic_thread, args=(topic, uri))
                     t.setDaemon(True)
                     t.start()
@@ -321,10 +355,10 @@ class RegManager(RegistrationListener):
         try:
             code, msg, _ = self.handler._connect_topic(topic, uri)
             if code != 1:
-                logdebug("Unable to connect subscriber to publisher [%s] for topic [%s]: %s", uri, topic, msg)
+                logerr("Unable to connect subscriber to publisher [%s] for topic [%s]: %s", uri, topic, msg)
         except Exception as e:
             if not is_shutdown():
-                logdebug("Unable to connect to publisher [%s] for topic [%s]: %s"%(uri, topic, traceback.format_exc()))
+                logerr("Unable to connect to publisher [%s] for topic [%s]: %s"%(uri, topic, traceback.format_exc()))
         
     def cleanup(self, reason):
         """
@@ -339,15 +373,6 @@ class RegManager(RegistrationListener):
         finally:
             self.cond.release()        
 
-        # we never successfully initialized master_uri
-        if not self.master_uri:
-            return
-        
-        master = xmlrpcapi(self.master_uri)
-        # we never successfully initialized master
-        if master is None:
-            return
-        
         caller_id = get_caller_id()
 
         # clear the registration listeners as we are going to do a quick unregister here
@@ -358,20 +383,19 @@ class RegManager(RegistrationListener):
         tm = get_topic_manager()
         sm = get_service_manager()
         try:
-            multi = xmlrpcclient.MultiCall(master)
+            bm = get_broadcast_manager()
             if tm is not None:
                 for resolved_name, _ in tm.get_subscriptions():
                     self.logger.debug("unregisterSubscriber [%s]"%resolved_name)
-                    multi.unregisterSubscriber(caller_id, resolved_name, self.uri)
+                    bm.unregisterSubscriber(caller_id, resolved_name, self.uri)
                 for resolved_name, _ in tm.get_publications():
                     self.logger.debug("unregisterPublisher [%s]"%resolved_name)                    
-                    multi.unregisterPublisher(caller_id, resolved_name, self.uri)
+                    bm.unregisterPublisher(caller_id, resolved_name, self.uri)
 
             if sm is not None:
                 for resolved_name, service_uri in sm.get_services():
                     self.logger.debug("unregisterService [%s]"%resolved_name) 
-                    multi.unregisterService(caller_id, resolved_name, service_uri)
-            multi()
+                    bm.unregisterService(caller_id, resolved_name, service_uri)
         except socket.error as se:
             (errno, msg) = se.args
             if errno == 111 or errno == 61: #can't talk to master, nothing we can do about it
@@ -381,7 +405,7 @@ class RegManager(RegistrationListener):
         except:
             self.logger.warn("unclean shutdown\n%s"%traceback.format_exc())
 
-        self.logger.debug("registration cleanup: master calls complete")            
+        self.logger.debug("registration cleanup: complete")            
 
         #TODO: cleanup() should actually be orchestrated by a separate
         #cleanup routine that calls the reg manager/sm/tm
@@ -400,24 +424,24 @@ class RegManager(RegistrationListener):
         @param reg_type: Valid values are L{Registration.PUB}, L{Registration.SUB}, L{Registration.SRV}
         @type  reg_type: str
         """
-        master_uri = self.master_uri
-        if not master_uri:
-            self.logger.error("Registrar: master_uri is not set yet, cannot inform master of deregistration")
-        else:
-            try:
-                master = xmlrpcapi(master_uri)
-                if reg_type == Registration.PUB:
-                    self.logger.debug("unregisterPublisher(%s, %s)", resolved_name, self.uri)
-                    master.unregisterPublisher(get_caller_id(), resolved_name, self.uri)
-                elif reg_type == Registration.SUB:            
-                    self.logger.debug("unregisterSubscriber(%s, %s)", resolved_name, data_type_or_uri)
-                    master.unregisterSubscriber(get_caller_id(), resolved_name, self.uri)
-                elif reg_type == Registration.SRV:
-                    self.logger.debug("unregisterService(%s, %s)", resolved_name, data_type_or_uri)
-                    master.unregisterService(get_caller_id(), resolved_name, data_type_or_uri)
-            except:
-                logwarn("unable to communicate with ROS Master, registrations are now out of sync")
-                self.logger.error(traceback.format_exc())
+        try:
+            bm = get_broadcast_manager()
+
+            if reg_type == Registration.PUB:
+                self.logger.debug("unregisterPublisher(%s, %s)", resolved_name, self.uri)
+                self.logger.info("unregisterPublisher(%s, %s)" % (resolved_name, self.uri))
+                bm.unregisterPublisher(get_caller_id(), resolved_name, self.uri)
+            elif reg_type == Registration.SUB:            
+                self.logger.debug("unregisterSubscriber(%s, %s)", resolved_name, data_type_or_uri)
+                self.logger.info("unregisterSubscriber(%s, %s)" % (resolved_name, data_type_or_uri))
+                bm.unregisterSubscriber(get_caller_id(), resolved_name, self.uri)
+            elif reg_type == Registration.SRV:
+                self.logger.debug("unregisterService(%s, %s)", resolved_name, data_type_or_uri)
+                self.logger.info("unregisterService(%s, %s)" % (resolved_name, data_type_or_uri))
+                bm.unregisterService(get_caller_id(), resolved_name, data_type_or_uri)
+        except:
+            logwarn("unable to unregister, registrations are now out of sync")
+            self.logger.error(traceback.format_exc())
     
     def reg_added(self, resolved_name, data_type_or_uri, reg_type):
         """
@@ -430,44 +454,44 @@ class RegManager(RegistrationListener):
         @type  reg_type: str
         """
         #TODO: this needs to be made robust to master outages
-        master_uri = self.master_uri
-        if not master_uri:
-            self.logger.error("Registrar: master_uri is not set yet, cannot inform master of registration")
-        else:
-            master = xmlrpcapi(master_uri)
-            args = (get_caller_id(), resolved_name, data_type_or_uri, self.uri)
-            registered = False
-            first = True
-            while not registered and not is_shutdown():
-                try:
-                    if reg_type == Registration.PUB:
-                        self.logger.debug("master.registerPublisher(%s, %s, %s, %s)"%args)
-                        code, msg, val = master.registerPublisher(*args)
-                        if code != 1:
-                            logfatal("unable to register publication [%s] with master: %s"%(resolved_name, msg))
-                    elif reg_type == Registration.SUB:
-                        self.logger.debug("master.registerSubscriber(%s, %s, %s, %s)"%args)
-                        code, msg, val = master.registerSubscriber(*args)
-                        if code == 1:
-                            self.publisher_update(resolved_name, val)
-                        else:
-                            # this is potentially worth exiting over. in the future may want to add a retry
-                            # timer
-                            logfatal("unable to register subscription [%s] with master: %s"%(resolved_name, msg))
-                    elif reg_type == Registration.SRV:
-                        self.logger.debug("master.registerService(%s, %s, %s, %s)"%args)
-                        code, msg, val = master.registerService(*args)
-                        if code != 1:
-                            logfatal("unable to register service [%s] with master: %s"%(resolved_name, msg))
-                        
-                    registered = True
-                except Exception as e:
-                    if first:
-                        msg = "Unable to register with master node [%s]: master may not be running yet. Will keep trying."%master_uri
-                        self.logger.error(str(e)+"\n"+msg)
-                        print(msg)
-                        first = False
-                    time.sleep(0.2)
+        args = (get_caller_id(), resolved_name, data_type_or_uri, self.uri)
+        registered = False
+        first = True
+        while not registered and not is_shutdown():
+            try:
+                bm = get_broadcast_manager()
+
+                if reg_type == Registration.PUB:
+                    self.logger.debug("registerPublisher(%s, %s, %s, %s)"%args)
+                    self.logger.info("registerPublisher(%s, %s, %s, %s)" % args)
+                    code, msg, val = bm.registerPublisher(*args)
+                    if code != 1:
+                        logfatal("unable to register publication [%s]: %s"%(resolved_name, msg))
+                elif reg_type == Registration.SUB:
+                    self.logger.debug("registerSubscriber(%s, %s, %s, %s)"%args)
+                    self.logger.info("registerSubscriber(%s, %s, %s, %s)" % args)
+                    code, msg, val = bm.registerSubscriber(*args)
+                    if code == 1:
+                        #pass
+                        self.publisher_update(resolved_name, val)
+                    else:
+                        # this is potentially worth exiting over. in the future may want to add a retry
+                        # timer
+                        logfatal("unable to register subscription [%s]: %s"%(resolved_name, msg))
+                elif reg_type == Registration.SRV:
+                    self.logger.debug("registerService(%s, %s, %s, %s)"%args)
+                    self.logger.info("registerService(%s, %s, %s, %s)" % args)
+                    code, msg, val = bm.registerService(*args)
+                    if code != 1:
+                        logfatal("unable to register service [%s]: %s"%(resolved_name, msg))
+                    
+                registered = True
+            except Exception as e:
+                if first:
+                    msg = "Unable to register."
+                    self.logger.error(str(e)+"\n"+msg)
+                    first = False
+                time.sleep(0.2)
 
     def publisher_update(self, resolved_name, uris):
         """
