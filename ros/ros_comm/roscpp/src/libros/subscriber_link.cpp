@@ -34,7 +34,7 @@ namespace ros
 {
 
 SubscriberLink::SubscriberLink()
-  : connection_id_(0)
+  : connection_id_(0), default_transport_(false), rospy_(false)
 {
 
 }
@@ -82,6 +82,26 @@ const std::string& SubscriberLink::getMessageDefinition()
 {
   PublicationPtr parent = parent_.lock();
   return parent->getMessageDefinition();
+}
+
+void SubscriberLink::setDefaultTransport(bool default_transport)
+{
+  default_transport_ = default_transport ; 
+}
+
+bool SubscriberLink::getDefaultTransport ()
+{
+  return default_transport_;
+}
+
+void SubscriberLink::setRospy(bool rospy)
+{
+  rospy_ = rospy ; 
+}
+
+bool SubscriberLink::getRospy ()
+{
+  return rospy_ ;
 }
 
 } // namespace ros

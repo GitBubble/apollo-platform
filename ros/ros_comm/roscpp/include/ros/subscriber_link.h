@@ -73,6 +73,7 @@ public:
 
   virtual void drop() = 0;
 
+  virtual const ConnectionPtr& getConnection() = 0;
   virtual std::string getTransportType() = 0;
   virtual std::string getTransportInfo() = 0;
 
@@ -83,6 +84,15 @@ public:
   const std::string& getDataType();
   const std::string& getMessageDefinition();
 
+  void setDefaultTransport(bool default_transport);
+
+  bool getDefaultTransport();
+
+  void setRospy(bool rospy);
+
+  bool getRospy ();
+
+
 protected:
   bool verifyDatatype(const std::string &datatype);
 
@@ -91,6 +101,10 @@ protected:
   std::string destination_caller_id_;
   Stats stats_;
   std::string topic_;
+
+  bool default_transport_ ;
+  bool rospy_;
+
 };
 
 } // namespace ros

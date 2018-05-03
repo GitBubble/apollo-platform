@@ -183,6 +183,14 @@ public:
 
   void headerReceived(const PublisherLinkPtr& link, const Header& h);
 
+  bool getSelfSubscribed();
+
+  void setSelfSubscribed(bool self_subscribed);  
+
+  void setLastIndex(int last_read_index);
+
+  int getLastIndex();
+
 private:
   Subscription(const Subscription &); // not copyable
   Subscription &operator =(const Subscription &); // nor assignable
@@ -241,6 +249,27 @@ private:
 
   typedef std::vector<std::pair<const std::type_info*, MessageDeserializerPtr> > V_TypeAndDeserializer;
   V_TypeAndDeserializer cached_deserializers_;
+
+  bool default_transport_ ;
+
+  bool self_subscribed_ ;
+
+  int32_t last_read_index_;
+
+  boost::interprocess::interprocess_mutex shm_sub_mutex_;
+
+  SubscriptionCallbackHelperPtr helper_;
+
+public:
+  SubscriptionCallbackHelperPtr& get_helper()
+  {
+    return helper_;
+  }
+
+  std::vector<PublisherLinkPtr> get_publisher_links()
+  {
+    return publisher_links_;
+  }
 };
 
 }

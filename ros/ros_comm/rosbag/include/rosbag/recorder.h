@@ -112,6 +112,11 @@ struct ROSBAG_DECL RecorderOptions
     std::string min_space_str;
 
     std::vector<std::string> topics;
+struct ROSBAG_DECL envItem
+{
+    std::string datatype;
+    std::string md5sum;
+    std::string msg_def;
 };
 
 class ROSBAG_DECL Recorder
@@ -185,6 +190,8 @@ private:
     boost::mutex                  check_disk_mutex_;
     ros::WallTime                 check_disk_next_;
     ros::WallTime                 warn_next_;
+
+    std::map<std::string, envItem> env_info_;
 };
 
 } // namespace rosbag

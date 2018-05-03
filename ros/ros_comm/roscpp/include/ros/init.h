@@ -215,6 +215,14 @@ ROSCPP_DECL std::string getROSArg(int argc, const char* const* argv, const std::
  */
 ROSCPP_DECL void removeROSArgs(int argc, const char* const* argv, V_string& args_out);
 
+/**
+ * \brief
+ *
+ * \param file the config file path
+ * Returns result
+ */
+bool configParse(std::string file);
+
 }
 
 #endif

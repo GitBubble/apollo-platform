@@ -54,6 +54,7 @@ public:
   virtual void drop();
   virtual std::string getTransportType();
   virtual std::string getTransportInfo();
+  virtual const ConnectionPtr& getConnection() { return connection_; }; 
   virtual bool isIntraprocess() { return true; }
   virtual void getPublishTypes(bool& ser, bool& nocopy, const std::type_info& ti);
 
@@ -61,6 +62,7 @@ private:
   IntraProcessPublisherLinkPtr subscriber_;
   bool dropped_;
   boost::recursive_mutex drop_mutex_;
+  ConnectionPtr connection_;
 };
 typedef boost::shared_ptr<IntraProcessSubscriberLink> IntraProcessSubscriberLinkPtr;
 

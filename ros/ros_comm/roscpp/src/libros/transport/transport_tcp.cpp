@@ -754,4 +754,38 @@ std::string TransportTCP::getClientURI()
   return uri.str();
 }
 
+std::string TransportTCP::getLocalIp()
+{
+  socklen_t local_address_len = sizeof(local_address_);
+  getsockname(sock_, (sockaddr *)&local_address_, &local_address_len);
+  
+  sockaddr_in *sin = (sockaddr_in *)&local_address_;
+  sockaddr_in6 *sin6 = (sockaddr_in6 *)&local_address_;
+
+  char namebuf[128];
+  int port = 0;
+
+  switch (local_address_.ss_family)
+  {
+    case AF_INET:
+      port = ntohs(sin->sin_port);
+      strcpy(namebuf, inet_ntoa(sin->sin_addr));
+      break;
+    case AF_INET6:
+      port = ntohs(sin6->sin6_port);
+      inet_ntop(AF_INET6, (void*)&(sin6->sin6_addr), namebuf, sizeof(namebuf));
+      break;
+    default:
+      namebuf[0] = 0;
+      port = 0;
+      break;
+  }
+
+  std::string ip = namebuf;
+  std::stringstream uri;
+  uri << ip << ":" << port;
+
+  return uri.str();
+}
+
 } // namespace ros

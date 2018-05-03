@@ -64,6 +64,10 @@
 
 #include <cstdlib>
 
+#include "ros/config_comm.h"  
+#include "ros/shm_manager.h"
+#include "yaml-cpp/yaml.h"
+
 namespace ros
 {
 
@@ -106,6 +110,8 @@ static bool g_shutdown_requested = false;
 static volatile bool g_shutting_down = false;
 static boost::recursive_mutex g_shutting_down_mutex;
 static boost::thread g_internal_queue_thread;
+
+struct ConfigComm g_config_comm;
 
 bool isInitialized()
 {
@@ -342,6 +348,8 @@ void start()
   }
 
   ros::Time::init();
+
+  ShmManager::instance()->start();
 
   if (!(g_init_options & init_options::NoRosout))
   {
@@ -602,6 +610,10 @@ void shutdown()
     PollManager::instance()->shutdown();
     ConnectionManager::instance()->shutdown();
     XMLRPCManager::instance()->shutdown();
+	if (ShmManager::instance()->isStarted())
+    {
+      ShmManager::instance()->shutdown();
+    }
   }
 
   WallTime end = WallTime::now();
@@ -609,6 +621,81 @@ void shutdown()
   g_started = false;
   g_ok = false;
   Time::shutdown();
+}
+
+bool configParse(std::string file)
+{
+  // Exclude some topics
+  g_config_comm.topic_white_list.insert("/rosout");
+  g_config_comm.topic_white_list.insert("/rosout_agg");
+  g_config_comm.topic_white_list.insert("/tf");
+
+  // Parse transport_mode file
+  try
+  {
+    YAML::Node node = YAML::LoadFile(file);
+
+    if (node.IsNull())
+    {
+      ROS_WARN_STREAM("transport file: " << file << " is null");
+      return false;
+    }
+
+    if (!node.IsMap())
+    {
+      ROS_WARN_STREAM("transport file: " << file << " is not map");
+      return false;
+    }
+
+    if (node.size() == 0)
+    {
+      ROS_WARN_STREAM("transport file: " << file << " size is zero");
+      return false;
+    }
+
+    // For transport_mode
+    if (node["transport_mode"])
+    {
+      g_config_comm.transport_mode =  node["transport_mode"].as<int>();
+      if (g_config_comm.transport_mode > 1 || g_config_comm.transport_mode < 0)
+      {
+        g_config_comm.transport_mode = 0;
+      }
+    }
+    else
+    {
+      ROS_WARN_STREAM("Key transport_mode doesn't exist"); 
+    }
+
+    // For topic_white_list
+    if (node["topic_white_list"])
+    {
+      if (node["topic_white_list"].IsSequence())
+      {
+        std::string topic;
+        for (int i = 0; i < node["topic_white_list"].size(); i++)
+        {
+          topic = node["topic_white_list"][i].as<std::string>();
+          g_config_comm.topic_white_list.insert(topic);
+        }
+      }
+      else
+      {
+        ROS_WARN_STREAM("Key topic_white_list is not Sequece");
+      }
+    }
+    else
+    {
+      ROS_WARN_STREAM("Key topic_white_list doesn't exist");
+    }
+
+    return true ;
+
+  } catch (YAML::Exception& e) {
+    ROS_WARN_STREAM("parse transport_mode file error:" << e.what());
+    return false;
+  }
+
 }
 
 }

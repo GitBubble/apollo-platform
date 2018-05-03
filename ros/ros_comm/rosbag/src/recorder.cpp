@@ -518,8 +518,32 @@ void Recorder::doRecord() {
         if (checkDuration(out.time))
             break;
 
-        if (scheduledCheckDisk() && checkLogging())
+        if (scheduledCheckDisk() && checkLogging()) {
+            if (std::string(ros::message_traits::datatype(*out.msg)) == "*") {
+                std::map<std::string, envItem>::iterator i = env_info_.find(out.topic);
+                if (i != env_info_.end()) {
+                    bag_.write(out.topic, out.time, *out.msg, out.connection_header, 
+                        i->second.datatype, i->second.md5sum, i->second.msg_def);
+                    continue;
+                } else {
+                    boost::shared_ptr<sharedmem_transport::SharedMemoryUtil> 
+                        util(new sharedmem_transport::SharedMemoryUtil());
+                    boost::interprocess::managed_shared_memory* segment = util->get_segment(out.topic.c_str());
+                    if (segment != NULL) {
+                        envItem env_item;
+                        env_item.datatype = util->get_datatype(segment);
+                        env_item.md5sum = util->get_md5sum(segment);
+                        env_item.msg_def = util->get_msg_def(segment);
+                        env_info_.insert(make_pair(out.topic, env_item));
+                        bag_.write(out.topic, out.time, *out.msg, out.connection_header, 
+                            env_item.datatype, env_item.md5sum, env_item.msg_def);
+                        continue;
+                    } 
+                }
+                
+            }
             bag_.write(out.topic, out.time, *out.msg, out.connection_header);
+        }
     }
 
     stopWriting();

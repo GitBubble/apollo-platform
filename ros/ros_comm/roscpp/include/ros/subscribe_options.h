@@ -34,6 +34,10 @@
 #include "ros/message_traits.h"
 #include "subscription_callback_helper.h"
 
+#include "ros/names.h"
+#include "roscpp/SharedMemoryHeader.h"
+#include "sharedmem_transport/sharedmem_util.h"
+
 namespace ros
 {
 

@@ -99,6 +99,16 @@ bool TransportSubscriberLink::handleHeader(const Header& header)
     return false;
   }
 
+  std::string node_type;
+  if (header.getValue("node_type", node_type) && node_type == "rospy")
+  {
+    setRospy(true);
+  } 
+  else
+  {
+    setRospy(false);
+  }
+
   destination_caller_id_ = client_callerid;
   connection_id_ = ConnectionManager::instance()->getNewConnectionID();
   topic_ = pt->getName();

@@ -88,6 +88,8 @@ public:
    */
   std::string getClientURI();
 
+  std::string getLocalIp();
+
   /**
    * \brief Start a server socket and listen on a port
    * \param port The port to listen on
@@ -120,6 +122,8 @@ public:
   virtual const char* getType() {return "UDPROS";}
 
   int getMaxDatagramSize() const {return max_datagram_size_;}
+
+    virtual int getSocket() { return sock_; }
 
 private:
   /**

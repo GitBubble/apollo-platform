@@ -476,4 +476,17 @@ std::string Connection::getRemoteString()
   return ss.str();
 }
 
+std::string Connection::getRemoteIp()
+{
+    std::stringstream ss;
+    ss << transport_->getClientURI();
+    return ss.str();
+}
+
+std::string Connection::getLocalIp()
+{
+    std::stringstream ss;
+    ss << transport_->getLocalIp();
+    return ss.str();
+}
 }

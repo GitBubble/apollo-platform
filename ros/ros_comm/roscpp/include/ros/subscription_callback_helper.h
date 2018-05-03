@@ -46,6 +46,10 @@
 #include <boost/utility/enable_if.hpp>
 #include <boost/make_shared.hpp>
 
+#include "roscpp/SharedMemoryHeader.h"
+#include "boost/bind.hpp" 
+#include "ros/names.h"   
+
 namespace ros
 {
 
