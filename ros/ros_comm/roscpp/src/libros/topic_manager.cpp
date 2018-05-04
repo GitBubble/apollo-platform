@@ -221,6 +221,10 @@ PublicationPtr TopicManager::lookupPublication(const std::string& topic)
   return lookupPublicationWithoutLock(topic);
 }
 
+L_Subscription  TopicManager::getAllSubscription()
+{
+  return subscriptions_ ;
+}
 
 bool md5sumsMatch(const std::string& lhs, const std::string& rhs)
 {
