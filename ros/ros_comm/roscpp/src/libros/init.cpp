@@ -329,6 +329,20 @@ void start()
   }
 #endif
 
+  // Parse transport_mode file to get switcher between shm and socket
+  std::string ros_etc_dir;
+  if (get_environment_variable(ros_etc_dir, "ROS_ETC_DIR"))
+  {
+    if(!configParse(ros_etc_dir+"/transport_mode.yaml"))
+    {
+      ROS_WARN_STREAM("Parse transport_mode file failed");
+    }
+  }
+  else
+  {
+    ROS_WARN_STREAM("Env variable ROS_ETC_DIR is not set");
+  }
+
   param::param("/tcp_keepalive", TransportTCP::s_use_keepalive_, TransportTCP::s_use_keepalive_);
 
   PollManager::instance()->addPollThreadListener(checkForShutdown);

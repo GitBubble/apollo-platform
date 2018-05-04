@@ -127,7 +127,6 @@ add_library(roscpp
   src/libros/sharedmem_transport/sharedmem_publisher_impl.cpp
   src/libros/sharedmem_transport/sharedmem_segment.cpp
   src/libros/sharedmem_transport/sharedmem_util.cpp
-  src/libros/broadcast_manager.cpp
   )
 
 add_dependencies(roscpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
