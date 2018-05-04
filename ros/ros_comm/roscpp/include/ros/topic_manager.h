@@ -39,8 +39,7 @@
 #include <boost/thread/recursive_mutex.hpp>
 
 #include "sharedmem_transport/sharedmem_util.h"
-#include <string.h>
-#include <stdio.h>
+
 
 namespace ros
 {
@@ -64,7 +63,6 @@ typedef boost::shared_ptr<ConnectionManager> ConnectionManagerPtr;
 class SubscriptionCallbackHelper;
 typedef boost::shared_ptr<SubscriptionCallbackHelper> SubscriptionCallbackHelperPtr;
 
-const std::string MANAGER_SHELL_ROSTOPIC_LIST = "rostopic list -v";
 
 class ROSCPP_DECL TopicManager
 {
@@ -107,7 +105,6 @@ public:
    */
   PublicationPtr lookupPublication(const std::string& topic);
 
-  SubscriptionPtr lookupSubscription(const std::string& topic);
 
 
   /** @brief Return the number of subscribers a node has for a particular topic:
@@ -143,20 +140,7 @@ public:
 
   void incrementSequence(const std::string &_topic);
   bool isLatched(const std::string& topic);
-  /** @brief Update local publisher lists.
-   *
-   * Use this method to update address information for publishers on a
-   * given topic.
-   *
-   * @param topic The topic of interest
-   * @param pubs The list of publishers to update.
-   *
-   * @return true on success, false otherwise.
-   */
-  bool pubUpdate(const std::string &topic, const std::vector<std::string> &pubs);
-  void registerPublisher(const std::string &topic, const std::string &datatype);
-  void registerPublisher(const std::string &topic);
-  void registerAllPublisher();
+ 
 
 private:
   /** if it finds a pre-existing subscription to the same topic and of the
@@ -223,7 +207,7 @@ private:
    * list of advertised topics and their datatypes.
    */
   void getPublications(XmlRpc::XmlRpcValue &publications);
-
+  bool pubUpdate(const std::string &topic, const std::vector<std::string> &pubs);
   void pubUpdateCallback(XmlRpc::XmlRpcValue& params, XmlRpc::XmlRpcValue& result);
   void requestTopicCallback(XmlRpc::XmlRpcValue& params, XmlRpc::XmlRpcValue& result);
   void getBusStatsCallback(XmlRpc::XmlRpcValue& params, XmlRpc::XmlRpcValue& result);
