@@ -649,6 +649,14 @@ void Bag::writeConnectionRecord(ConnectionInfo const* connection_info) {
     header[OP_FIELD_NAME]         = toHeaderString(&OP_CONNECTION);
     header[TOPIC_FIELD_NAME]      = connection_info->topic;
     header[CONNECTION_FIELD_NAME] = toHeaderString(&connection_info->id);
+    header[TYPE_FIELD_NAME] = connection_info->datatype;
+    header[MD5_FIELD_NAME] = connection_info->md5sum;
+    header[DEF_FIELD_NAME] = connection_info->msg_def;
+
+    (*connection_info->header)["type"] = connection_info->datatype;
+    (*connection_info->header)["md5sum"] = connection_info->md5sum;
+    (*connection_info->header)["message_definition"] = connection_info->msg_def;
+
     writeHeader(header);
 
     writeHeader(*connection_info->header);
