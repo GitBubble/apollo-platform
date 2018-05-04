@@ -429,7 +429,12 @@ bool TopicManager::advertise(const AdvertiseOptions& ops, const SubscriberCallba
     sub->addLocalConnection(pub);
   }
 
-  registerPublisher(ops.topic, ops.datatype);
+  XmlRpcValue args,result,payload;
+  args[0] = this_node::getName();
+  args[1] = ops.topic;
+  args[2] = ops.datatype;
+  args[3] = xmlrpc_manager_->getServerURI();
+  master::execute("registerPublisher", args, result, payload, true);
   return true;
 }
 
