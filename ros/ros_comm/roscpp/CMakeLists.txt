@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(roscpp)
 
 if(NOT WIN32)
-  set_directory_properties(PROPERTIES COMPILE_OPTIONS "-std=c++11;-Wall;-Wextra")
+  set_directory_properties(PROPERTIES COMPILE_OPTIONS "-g -std=c++11;-Wall;-Wextra")
 endif()
 
 find_package(catkin REQUIRED COMPONENTS
@@ -73,6 +73,29 @@ CHECK_CXX_SYMBOL_EXISTS(epoll_wait "sys/epoll.h" HAVE_EPOLL)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/libros/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
+set(FASTRTPS_INCLUDE_DIR "${FASTRTPS_PATH}/include")
+set(FASTRTPS_LIBRARY_DIR "${FASTRTPS_PATH}/lib")
+set(FASTRTPS_GEN "${FASTRTPS_PATH}/bin/fastrtpsgen")
+include_directories(include ${FASTRTPS_INCLUDE_DIR})
+
+link_directories(
+${FASTRTPS_LIBRARY_DIR}
+)
+
+SET(DISCOVERY_IDL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/src/libros/discovery/MetaMessagePubSubTypes.cxx ${CMAKE_CURRENT_SOURCE_DIR}/src/libros/discovery/MetaMessage.cxx)
+#ADD_CUSTOM_COMMAND(
+#    OUTPUT ${DISCOVERY_IDL_SRCS}
+#    COMMAND ${FASTRTPS_GEN} ${CMAKE_CURRENT_SOURCE_DIR}/src/libros/discovery/MetaMessage.idl -d ${CMAKE_CURRENT_SOURCE_DIR}/src/libros/discovery/}
+#    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/libros/discovery/MetaMessage.idl
+#)
+
+# Add discovery for python tools
+add_library(discovery SHARED
+  src/libros/discovery/participant.cpp
+  ${DISCOVERY_IDL_SRCS}
+)
+target_link_libraries(discovery fastcdr fastrtps -fPIC)
+
 add_library(roscpp 
   src/libros/master.cpp
   src/libros/network.cpp
@@ -122,6 +145,8 @@ add_library(roscpp
   src/libros/service.cpp
   src/libros/this_node.cpp
   src/libros/steady_timer.cpp
+  src/libros/discovery/participant.cpp
+  ${DISCOVERY_IDL_SRCS}
   )
 
 add_dependencies(roscpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -129,6 +154,9 @@ add_dependencies(roscpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TA
 target_link_libraries(roscpp
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
+  fastrtps
+  fastcdr
+  -lrt
   )
 
 #explicitly install library and includes
@@ -149,3 +177,26 @@ catkin_install_python(PROGRAMS
   rosbuild/scripts/gensrv_cpp.py
   rosbuild/scripts/msg_gen.py
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/rosbuild/scripts)
+
+install(FILES lib/_participant.so
+  DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+install(TARGETS discovery
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
+
+#node test
+add_executable(talker test_node/talker.cpp)
+add_executable(listener test_node/listener.cpp)
+
+target_link_libraries(talker ${catkin_LIBRARIES} ${PROJECT_NAME})
+target_link_libraries(listener ${catkin_LIBRARIES} ${PROJECT_NAME})
+
+install(TARGETS talker
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
+install(TARGETS listener
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
