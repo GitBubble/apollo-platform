@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2017, The Apollo Authors. All Rights Reserved
+# Copyright (c) 2018, GitBubble A.K.A Arthur. All Rights Reserved
 #
 # VERSION:    1.0
 # FILEIN:     ros
@@ -12,11 +12,11 @@ CURRENT_PATH=`pwd`
 MACHINE_ARCH="$(uname -m)"
 
 INSTALL_PATH="${CURRENT_PATH}/install/ros_$MACHINE_ARCH"
-FASTRTPS_PATH="${CURRENT_PATH}/third_party/fast-rtps"
-TP_LIB_PATH="${CURRENT_PATH}/third_party/lib"
+#FASTRTPS_PATH="${CURRENT_PATH}/third_party/fast-rtps"
+#TP_LIB_PATH="${CURRENT_PATH}/third_party/lib"
 
 BUILD_TYPE="Release"
-export LD_LIBRARY_PATH="${CURRENT_PATH}/third_party/fast-rtps/lib:$LD_LIBRARY_PATH"
+#export LD_LIBRARY_PATH="${CURRENT_PATH}/third_party/fast-rtps/lib:$LD_LIBRARY_PATH"
 #--------------------------- function ------------------------------
 function info() {
   (>&2 echo -e "[\e[34m\e[1mINFO\e[0m] $*")
@@ -67,18 +67,18 @@ function clean() {
 
 function build_ros() {
     
-    rm -f ${FASTRTPS_PATH} ${TP_LIB_PATH}
-    ln -sf ${FASTRTPS_PATH}_${MACHINE_ARCH} ${FASTRTPS_PATH} &&
-    ln -sf ${TP_LIB_PATH}_${MACHINE_ARCH} ${TP_LIB_PATH} &&
+    #rm -f ${FASTRTPS_PATH} ${TP_LIB_PATH}
+    #ln -sf ${FASTRTPS_PATH}_${MACHINE_ARCH} ${FASTRTPS_PATH} &&
+    #ln -sf ${TP_LIB_PATH}_${MACHINE_ARCH} ${TP_LIB_PATH} &&
 
     ./catkin/bin/catkin_make_isolated --install --source . \
         --install-space ${INSTALL_PATH} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-       -DFASTRTPS_PATH=${FASTRTPS_PATH} --cmake-args --no-warn-unused-cli &&
+        --cmake-args --no-warn-unused-cli &&
  
-    cp -r ${CURRENT_PATH}/third_party/fast-rtps/lib/* ${INSTALL_PATH}/lib/ &&
-    cp -r ${CURRENT_PATH}/third_party/bin/* ${INSTALL_PATH}/bin/	
-    rsync -rv ${CURRENT_PATH}/third_party/lib/  --exclude=librosconsole_log4cxx.so  ${INSTALL_PATH}/lib/ &&
-    ${CURRENT_PATH}/third_party/swig_wrapper/build.sh
+    #cp -r ${CURRENT_PATH}/third_party/fast-rtps/lib/* ${INSTALL_PATH}/lib/ &&
+    #cp -r ${CURRENT_PATH}/third_party/bin/* ${INSTALL_PATH}/bin/	
+    #rsync -rv ${CURRENT_PATH}/third_party/lib/  --exclude=librosconsole_log4cxx.so  ${INSTALL_PATH}/lib/ &&
+    #${CURRENT_PATH}/third_party/swig_wrapper/build.sh
 	
     find -name "*.pyc" -print0 | xargs -0 rm -rf
 

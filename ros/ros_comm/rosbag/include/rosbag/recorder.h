@@ -112,6 +112,8 @@ struct ROSBAG_DECL RecorderOptions
     std::string min_space_str;
 
     std::vector<std::string> topics;
+};
+
 struct ROSBAG_DECL envItem
 {
     std::string datatype;

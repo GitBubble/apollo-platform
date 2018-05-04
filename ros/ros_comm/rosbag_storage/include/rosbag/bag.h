@@ -177,6 +177,9 @@ public:
     void write(std::string const& topic, ros::Time const& time, boost::shared_ptr<T> const& msg,
                boost::shared_ptr<ros::M_string> connection_header = boost::shared_ptr<ros::M_string>(), 
                std::string datatype = "", std::string md5sum = "", std::string msg_def = "");
+    
+	void swap(Bag&);
+
 
 private:
     Bag(const Bag&);
