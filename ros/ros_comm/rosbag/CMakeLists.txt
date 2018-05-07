@@ -4,6 +4,7 @@ project(rosbag)
 if(NOT WIN32)
   set_directory_properties(PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra")
 endif()
+set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
 find_package(catkin REQUIRED COMPONENTS rosbag_storage rosconsole roscpp std_srvs topic_tools xmlrpcpp)
 find_package(Boost REQUIRED COMPONENTS date_time regex program_options filesystem)
@@ -17,6 +18,10 @@ add_definitions(-D_FILE_OFFSET_BITS=64)
 include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS}
   ${BZIP2_INCLUDE_DIR}
 )
+set(FASTRTPS_INCLUDE_DIR "${FASTRTPS_PATH}/include")
+set(FASTRTPS_LIBRARY_DIR "${FASTRTPS_PATH}/lib")
+set(FASTRTPS_GEN "${FASTRTPS_PATH}/bin/fastrtpsgen")
+include_directories(include ${FASTRTPS_INCLUDE_DIR})
 
 catkin_package(
   LIBRARIES rosbag

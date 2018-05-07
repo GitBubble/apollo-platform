@@ -2,12 +2,14 @@ cmake_minimum_required(VERSION 2.8.3)
 project(roscpp)
 
 if(NOT WIN32)
-  set_directory_properties(PROPERTIES COMPILE_OPTIONS "-g;-std=c++11;-Wall;-Wextra")
+  set_directory_properties(PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra")
 endif()
 
 find_package(catkin REQUIRED COMPONENTS
   cpp_common message_generation rosconsole roscpp_serialization roscpp_traits rosgraph_msgs rostime std_msgs xmlrpcpp
 )
+
+set(CMAKE_CXX_FLAGS "-g -std=c++11 ${CMAKE_CXX_FLAGS}")
 
 catkin_package_xml()
 # split version in parts and pass to extra file
@@ -145,6 +147,7 @@ add_library(roscpp
   src/libros/service.cpp
   src/libros/this_node.cpp
   src/libros/steady_timer.cpp
+  src/libros/broadcast_manager.cpp
   src/libros/discovery/participant.cpp
   ${DISCOVERY_IDL_SRCS}
   )

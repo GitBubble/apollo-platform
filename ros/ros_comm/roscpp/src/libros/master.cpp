@@ -26,6 +26,7 @@
  */
 
 #include "ros/master.h"
+#include "ros/broadcast_manager.h"
 #include "ros/xmlrpc_manager.h"
 #include "ros/this_node.h"
 #include "ros/init.h"
@@ -123,52 +124,13 @@ bool check()
   return execute("getPid", args, result, payload, false);
 }
 
-bool getTopics(V_TopicInfo& topics)
-{
-  XmlRpc::XmlRpcValue args, result, payload;
-  args[0] = this_node::getName();
-  args[1] = ""; //TODO: Fix this
-
-  if (!execute("getPublishedTopics", args, result, payload, true))
-  {
-    return false;
-  }
-
-  topics.clear();
-  for (int i = 0; i < payload.size(); i++)
-  {
-    topics.push_back(TopicInfo(std::string(payload[i][0]), std::string(payload[i][1])));
-  }
-
+bool getTopics(V_TopicInfo& topics) {
+  BroadcastManager::instance()->getTopicTypes(topics); 
   return true;
 }
 
-bool getNodes(V_string& nodes)
-{
-  XmlRpc::XmlRpcValue args, result, payload;
-  args[0] = this_node::getName();
-
-  if (!execute("getSystemState", args, result, payload, true))
-  {
-    return false;
-  }
-
-  S_string node_set;
-  for (int i = 0; i < payload.size(); ++i)
-  {
-    for (int j = 0; j < payload[i].size(); ++j)
-    {
-      XmlRpc::XmlRpcValue val = payload[i][j][1];
-      for (int k = 0; k < val.size(); ++k)
-      {
-        std::string name = payload[i][j][1][k];
-        node_set.insert(name);
-      }
-    }
-  }
-
-  nodes.insert(nodes.end(), node_set.begin(), node_set.end());
-
+bool getNodes(V_string& nodes) {
+  BroadcastManager::instance()->getNodes(nodes); 
   return true;
 }
 

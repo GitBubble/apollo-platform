@@ -89,6 +89,7 @@ Publication::Publication(const std::string &name,
   dropped_(false),
   latch_(latch),
   has_header_(has_header),
+  self_published_(false),
   intraprocess_subscriber_count_(0)
 {
 }
@@ -192,6 +193,17 @@ bool Publication::enqueueMessage(const SerializedMessage& m)
 
   return true;
 }
+
+void Publication::setSelfPublished(bool self_published)
+{
+  self_published_ = self_published;
+}
+
+bool Publication::getSelfPublished()
+{
+  return self_published_;
+}
+
 
 void Publication::addSubscriberLink(const SubscriberLinkPtr& sub_link)
 {

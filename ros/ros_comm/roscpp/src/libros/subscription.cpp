@@ -202,6 +202,15 @@ bool urisEqual(const std::string& uri1, const std::string& uri2)
   network::splitURI(uri2, host2, port2);
   return port1 == port2 && host1 == host2;
 }
+bool Subscription::getSelfSubscribed()
+{
+  return self_subscribed_;
+}
+
+void Subscription::setSelfSubscribed(bool self_subscribed)
+{
+  self_subscribed_ = self_subscribed;
+}
 
 bool Subscription::pubUpdate(const V_string& new_pubs)
 {

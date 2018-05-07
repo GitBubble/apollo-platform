@@ -29,6 +29,7 @@ unset _UNAME
 
 # make sure to export all environment variables
 export CMAKE_PREFIX_PATH
+export CPATH
 if [ $_IS_DARWIN -eq 0 ]; then
   export LD_LIBRARY_PATH
 else
@@ -93,3 +94,4 @@ done
 unset _i
 
 unset _CATKIN_ENVIRONMENT_HOOKS_COUNT
+export ROS_DOMAIN_ID=`hostname -I | sed 's/[^0-9]//g' | cut -c5-10`"77"

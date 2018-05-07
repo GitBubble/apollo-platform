@@ -146,6 +146,10 @@ public:
 
   bool validateHeader(const Header& h, std::string& error_msg);
 
+  void setSelfPublished(bool self_published);
+
+  bool getSelfPublished();
+
 private:
   void dropAllConnections();
 
@@ -180,6 +184,7 @@ private:
   bool has_header_;
   SerializedMessage last_message_;
 
+  bool self_published_;
   uint32_t intraprocess_subscriber_count_;
 
   typedef std::vector<SerializedMessage> V_SerializedMessage;

@@ -59,6 +59,7 @@
 #include <topic_tools/shape_shifter.h>
 
 #include "ros/network.h"
+#include "ros/broadcast_manager.h"
 #include "ros/xmlrpc_manager.h"
 #include "xmlrpcpp/XmlRpc.h"
 
@@ -567,12 +568,13 @@ void Recorder::doCheckMaster(ros::TimerEvent const& e, ros::NodeHandle& node_han
     (void)e;
     (void)node_handle;
     ros::master::V_TopicInfo topics;
-    if (ros::master::getTopics(topics)) {
-		foreach(ros::master::TopicInfo const& t, topics) {
-			if (shouldSubscribeToTopic(t.name))
-				subscribe(t.name);
-		}
-    }
+    ros::BroadcastManager::instance()->getTopics(topics);
+    foreach(ros::master::TopicInfo const& t, topics) {
+        if (shouldSubscribeToTopic(t.name))
+        {
+		     subscribe(t.name);
+        }
+	}
     
     if (options_.node != std::string(""))
     {

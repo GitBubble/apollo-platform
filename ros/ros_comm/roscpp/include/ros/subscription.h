@@ -183,6 +183,9 @@ public:
 
   void headerReceived(const PublisherLinkPtr& link, const Header& h);
 
+  bool getSelfSubscribed();
+
+  void setSelfSubscribed(bool self_subscribed);  
 private:
   Subscription(const Subscription &); // not copyable
   Subscription &operator =(const Subscription &); // nor assignable
@@ -241,6 +244,7 @@ private:
 
   typedef std::vector<std::pair<const std::type_info*, MessageDeserializerPtr> > V_TypeAndDeserializer;
   V_TypeAndDeserializer cached_deserializers_;
+  bool self_subscribed_ ;
 };
 
 }

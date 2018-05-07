@@ -123,13 +123,13 @@ XMLRPCManager::~XMLRPCManager()
   shutdown();
 }
 
-void XMLRPCManager::start()
+void XMLRPCManager::start(int port_def)
 {
   shutting_down_ = false;
   port_ = 0;
   bind("getPid", getPid);
 
-  bool bound = server_.bindAndListen(0);
+  bool bound = server_.bindAndListen(port_def);
   (void) bound;
   ROS_ASSERT(bound);
   port_ = server_.get_port();

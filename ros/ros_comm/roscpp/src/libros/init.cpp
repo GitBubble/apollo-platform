@@ -34,6 +34,7 @@
 
 #include "ros/init.h"
 #include "ros/names.h"
+#include "ros/broadcast_manager.h"
 #include "ros/xmlrpc_manager.h"
 #include "ros/poll_manager.h"
 #include "ros/connection_manager.h"
@@ -335,6 +336,7 @@ void start()
   ConnectionManager::instance()->start();
   PollManager::instance()->start();
   XMLRPCManager::instance()->start();
+  BroadcastManager::instance()->start();
 
   if (!(g_init_options & init_options::NoSigintHandler))
   {
@@ -602,6 +604,7 @@ void shutdown()
     PollManager::instance()->shutdown();
     ConnectionManager::instance()->shutdown();
     XMLRPCManager::instance()->shutdown();
+    BroadcastManager::instance()->shutdown();
   }
 
   WallTime end = WallTime::now();

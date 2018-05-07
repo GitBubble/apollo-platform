@@ -26,6 +26,7 @@
  */
 
 #include "ros/topic_manager.h"
+#include "ros/broadcast_manager.h"
 #include "ros/xmlrpc_manager.h"
 #include "ros/connection_manager.h"
 #include "ros/poll_manager.h"
@@ -53,10 +54,20 @@ using namespace std; // sigh
 namespace ros
 {
 
+TopicManagerPtr g_topic_manager;
+boost::mutex g_topic_manager_mutex;
 const TopicManagerPtr& TopicManager::instance()
 {
-  static TopicManagerPtr topic_manager = boost::make_shared<TopicManager>();
-  return topic_manager;
+  if (!g_topic_manager)
+  {
+    boost::mutex::scoped_lock lock(g_topic_manager_mutex);
+    if (!g_topic_manager)
+    {
+      g_topic_manager = boost::make_shared<TopicManager>();
+    }
+  }
+
+  return g_topic_manager;
 }
 
 TopicManager::TopicManager()
@@ -244,6 +255,7 @@ bool TopicManager::addSubCallback(const SubscribeOptions& ops)
 // this function has the subscription code that doesn't need to be templated.
 bool TopicManager::subscribe(const SubscribeOptions& ops)
 {
+  {
   boost::mutex::scoped_lock lock(subs_mutex_);
 
   if (addSubCallback(ops))
@@ -285,7 +297,9 @@ bool TopicManager::subscribe(const SubscribeOptions& ops)
   }
 
   subscriptions_.push_back(s);
+  }
 
+  BroadcastManager::instance()->publisherUpdate(ops.topic);
   return true;
 }
 
@@ -388,13 +402,7 @@ bool TopicManager::advertise(const AdvertiseOptions& ops, const SubscriberCallba
     sub->addLocalConnection(pub);
   }
 
-  XmlRpcValue args, result, payload;
-  args[0] = this_node::getName();
-  args[1] = ops.topic;
-  args[2] = ops.datatype;
-  args[3] = xmlrpc_manager_->getServerURI();
-  master::execute("registerPublisher", args, result, payload, true);
-
+  registerPublisher(ops.topic, ops.datatype);
   return true;
 }
 
@@ -449,12 +457,8 @@ bool TopicManager::unadvertise(const std::string &topic, const SubscriberCallbac
 
 bool TopicManager::unregisterPublisher(const std::string& topic)
 {
-  XmlRpcValue args, result, payload;
-  args[0] = this_node::getName();
-  args[1] = topic;
-  args[2] = xmlrpc_manager_->getServerURI();
-  master::execute("unregisterPublisher", args, result, payload, false);
 
+  BroadcastManager::instance()->unregisterPublisher(topic, xmlrpc_manager_->getServerURI());
   return true;
 }
 
@@ -473,17 +477,8 @@ bool TopicManager::isTopicAdvertised(const string &topic)
 
 bool TopicManager::registerSubscriber(const SubscriptionPtr& s, const string &datatype)
 {
-  XmlRpcValue args, result, payload;
-  args[0] = this_node::getName();
-  args[1] = s->getName();
-  args[2] = datatype;
-  args[3] = xmlrpc_manager_->getServerURI();
-
-  if (!master::execute("registerSubscriber", args, result, payload, true))
-  {
-    return false;
-  }
-
+  BroadcastManager::instance()->registerSubscriber(s->getName(), datatype, xmlrpc_manager_->getServerURI());
+#if 0 // add pubs in registerPublisher callback
   vector<string> pub_uris;
   for (int i = 0; i < payload.size(); i++)
   {
@@ -492,6 +487,7 @@ bool TopicManager::registerSubscriber(const SubscriptionPtr& s, const string &da
       pub_uris.push_back(string(payload[i]));
     }
   }
+#endif
 
   bool self_subscribed = false;
   PublicationPtr pub;
@@ -520,12 +516,16 @@ bool TopicManager::registerSubscriber(const SubscriptionPtr& s, const string &da
 	    }
 
 	  self_subscribed = true;
+	  
+	  pub->setSelfPublished(true);
 	  break;
 	}
     }
   }
 
-  s->pubUpdate(pub_uris);
+  s->setSelfSubscribed(self_subscribed);
+
+  //s->pubUpdate(pub_uris);
   if (self_subscribed)
   {
     s->addLocalConnection(pub);
@@ -536,13 +536,16 @@ bool TopicManager::registerSubscriber(const SubscriptionPtr& s, const string &da
 
 bool TopicManager::unregisterSubscriber(const string &topic)
 {
+#if 0 // TODO
   XmlRpcValue args, result, payload;
   args[0] = this_node::getName();
   args[1] = topic;
   args[2] = xmlrpc_manager_->getServerURI();
 
   master::execute("unregisterSubscriber", args, result, payload, false);
+#endif
 
+  BroadcastManager::instance()->unregisterSubscriber(topic, xmlrpc_manager_->getServerURI());
   return true;
 }
 
@@ -1067,4 +1070,24 @@ void TopicManager::getPublicationsCallback(XmlRpc::XmlRpcValue& params, XmlRpc::
   result[2] = response;
 }
 
+void TopicManager::registerPublisher(const std::string& topic) {
+  for (auto t: advertised_topics_) {
+    if ((t->getName() == topic) && (!t->isDropped())) {
+      registerPublisher(t->getName(), t->getDataType());
+    }
+  }
+}
+
+void TopicManager::registerPublisher(const std::string& topic, const std::string& datatype) {
+  BroadcastManager::instance()->registerPublisher(topic, datatype, 
+          xmlrpc_manager_->getServerURI());
+}
+
+void TopicManager::registerAllPublisher() {
+  for (auto t: advertised_topics_) {
+    if (!t->isDropped()) {
+      registerPublisher(t->getName(), t->getDataType());
+    }
+  }
+}
 } // namespace ros
