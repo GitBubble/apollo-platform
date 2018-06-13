@@ -323,14 +323,6 @@ bool TopicManager::subscribe(const SubscribeOptions& ops)
   }
 
   subscriptions_.push_back(s);
-
-
-  XmlRpcValue args,result,payload;
-  args[0] = this_node::getName();
-  args[1] = ops.topic;
-  args[2] = ops.datatype;
-  args[3] = xmlrpc_manager_->getServerURI();
-  master::execute("registerPublisher", args, result, payload, true);
   return true;
 }
 
